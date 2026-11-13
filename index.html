@@ -873,14 +873,6 @@ const fridgeMat = new THREE.MeshStandardMaterial({ map: makeConcreteTexture(), c
   door(y1, y2, zMid, zTop);                                                           // 中層抽屜
   door(y1, y2, BASE, zMid);                                                           // 下層抽屜
   box(xf - cm2px(0.3), y1 + cm2px(3), xf, y2 - cm2px(3), zTop - 1.5, zTop - 0.8, cab.steel); // 門下緣把手溝金屬線
-  // 冰箱上方吊櫃：把冰箱頂到天花（245）的凹處封起來，與廚具同款灰色水泥紋；
-  // 寬同冰箱位（y 446~527，北到冰箱側、南到 J5 牆垛），深到冰箱門面（與冰箱齊平），下緣離冰箱頂 5cm 散熱，兩片對開門
-  {
-    const T = cm2px(1.8), G = cm2px(0.2), z0 = FRIDGE.h + 5, z1 = KITCHEN_CEIL_H, ya = y1, yb = 527, ym = (ya + yb) / 2;
-    carcass(xf + T, ya, 737, yb, z0, z1, cab.concrete, { face: 'x-', inner: cab.white, shelves: [(z0 + z1) / 2] });
-    hingeDoor(xf, ya + G, xf + T, ym - G, z0 + 0.3, z1 - 0.3, cab.concrete, { hinge: 'min', out: -1 });
-    hingeDoor(xf, ym + G, xf + T, yb - G, z0 + 0.3, z1 - 0.3, cab.concrete, { hinge: 'max', out: -1 });
-  }
 }
 
 // ---------- 玄關：大門細節 + 玄關櫃 + 冷氣 ----------
