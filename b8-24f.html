@@ -2,12 +2,12 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
 <title>B8-24F 3D 模型</title>
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: #1b1d22; font-family: system-ui, "PingFang TC", sans-serif; }
   #ui {
-    position: fixed; top: 12px; left: 12px; z-index: 10;
+    position: fixed; top: calc(12px + env(safe-area-inset-top)); left: calc(12px + env(safe-area-inset-left)); z-index: 10;
     background: rgba(20, 22, 28, .85); color: #e8e8e8; padding: 12px 14px;
     border-radius: 8px; font-size: 13px; line-height: 1.7; max-width: 280px;
   }
@@ -25,14 +25,15 @@
   }
   #cross { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: rgba(255,255,255,.7); display: none; }
   /* ---------- 手機 / 平板觸控 ---------- */
-  canvas { touch-action: none; }
+  /* 畫布固定鋪滿整個螢幕（含 iPhone 瀏海 / 手勢條區域），避免橫向時出現黑邊 */
+  canvas { touch-action: none; position: fixed; left: 0; top: 0; display: block; width: 100vw !important; height: 100vh !important; height: 100dvh !important; }
   #touchUI { display: none; }
   #touchUI.on { display: block; }
   #touchUI.orbit .walkOnly { display: none; }
-  #joyBase { position: fixed; left: 22px; bottom: calc(22px + env(safe-area-inset-bottom)); width: 124px; height: 124px; border-radius: 50%;
+  #joyBase { position: fixed; left: calc(22px + env(safe-area-inset-left)); bottom: calc(22px + env(safe-area-inset-bottom)); width: 124px; height: 124px; border-radius: 50%;
     background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.35); touch-action: none; z-index: 20; }
   #joyStick { position: absolute; left: 37px; top: 37px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,.6); pointer-events: none; }
-  #touchBtns { position: fixed; right: 18px; bottom: calc(26px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; z-index: 20; }
+  #touchBtns { position: fixed; right: calc(18px + env(safe-area-inset-right)); bottom: calc(26px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; z-index: 20; }
   #touchBtns button.ready { background: rgba(255,210,74,.9); color: #222; border-color: #ffd24a; }
   #touchBtns button { width: 64px; height: 64px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); background: rgba(20,22,28,.6);
     color: #fff; font-size: 15px; font-family: inherit; touch-action: manipulation; }
@@ -1538,11 +1539,17 @@ function tick() {
   requestAnimationFrame(tick);
 }
 
-addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight;
+// 依畫布實際顯示大小調整解析度與比例（iOS Safari 轉向後 innerWidth / innerHeight 會延遲更新，所以轉向後再補算一次）
+function fitCanvas() {
+  const c = renderer.domElement, w = c.clientWidth || innerWidth, h = c.clientHeight || innerHeight;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-});
+  renderer.setSize(w, h, false);
+}
+addEventListener('resize', fitCanvas);
+addEventListener('orientationchange', () => { setTimeout(fitCanvas, 150); setTimeout(fitCanvas, 600); });
+if (window.visualViewport) visualViewport.addEventListener('resize', fitCanvas);
+fitCanvas();
 
 updateUI();
 tick();
