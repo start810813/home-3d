@@ -60,7 +60,8 @@
     <button id="btnBeam" style="display:none">主臥樑：A 直角</button>
     <button id="btnDoors" class="off">櫃門：全關</button>
     <button id="btnBright">曝光：標準</button>
-    <button id="btnWood">臥室櫃色：洗白木</button>
+    <button id="btnWood">臥室櫃色：橡木</button>
+    <button id="btnLamp">立燈：開</button>
   </div>
   <div id="postures" style="margin-top:6px">視角（身高 172cm）：<br>
     <button data-p="0">站立</button><button data-p="1" class="off">坐下</button><button data-p="2" class="off">蹲下</button><button data-p="3" class="off">躺下</button>
@@ -112,8 +113,9 @@ const CM_PER_PX = 0.98;
 const CEIL_H = 320;   // 樓板下淨高（cm），使用者提供
 const SLAB = 15;      // 樓板厚（cm），樑深扣掉樓板即為樑下垂量
 const DOOR_H = 210;   // 門高
-const SILL_H = 90;    // 窗台高
-const WIN_TOP = 210;  // 窗頂高
+const SILL_H = 60;    // 窗台高（A10 全室低台度窗，離地 60）
+const WIN_TOP = 230;  // 窗頂高（依窗型圖：窗台 60 + 下段固定窗 60 + 上段橫拉窗 110）
+const WIN_FIX = 60;   // 下段固定窗（FIX）高
 const ORIGIN = { x: 500, y: 640 }; // 平面圖中心（px）
 
 const px2m = (p) => p * CM_PER_PX / 100;
@@ -155,37 +157,51 @@ Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8 });
 scene.add(sun);
 
 // ---------- 材質 ----------
-// 淺木紋地板：canvas 程序產生，一張貼圖代表 120cm x 80cm（4 片 20cm 寬地板）
-const WOOD_TILE = { w: 1.2, d: 0.8 };
+// 超耐磨木地板：Order floor 赫卡奇柏橡-窄版 Khaki Oak 5966（單片 19.5 x 128.8cm，交錯貼）
+// canvas 程序產生，一張貼圖 = 2 片長 x 8 排寬 = 257.6cm x 156cm；每排端縫位置不同（交錯、錯開至少約 30cm，不做規則的 1/2 錯縫）
+const WOOD_TILE = { w: 2.576, d: 1.56 };
 function makeWoodTexture() {
   const c = document.createElement('canvas');
-  c.width = 1024; c.height = 683;
+  const ROWS = 8, PL = 128.8;                                     // 排數、單片長（cm）
+  c.width = 2048; c.height = Math.round(2048 * 156 / 257.6);
   const ctx = c.getContext('2d');
-  const plankH = c.height / 4;
-  const tones = ['#e3cfae', '#dcc7a3', '#e8d6b8', '#d9c29c'];
-  for (let i = 0; i < 4; i++) {
-    const y = i * plankH;
-    const offset = (i % 2) * c.width / 2; // 錯縫
-    for (const x0 of [offset - c.width, offset]) {
-      ctx.fillStyle = tones[(i + (x0 < 0 ? 1 : 0)) % tones.length];
-      ctx.fillRect(x0, y, c.width, plankH);
-      // 木紋
-      for (let k = 0; k < 14; k++) {
-        ctx.strokeStyle = `rgba(150,110,70,${0.06 + Math.random() * 0.08})`;
-        ctx.lineWidth = 1 + Math.random() * 2;
-        const gy = y + Math.random() * plankH;
-        ctx.beginPath();
-        ctx.moveTo(x0, gy);
-        for (let x = 0; x <= c.width; x += 64) ctx.lineTo(x0 + x, gy + Math.sin(x / 90 + k) * 3);
-        ctx.stroke();
-      }
-      // 端縫
-      ctx.fillStyle = 'rgba(120,90,60,.35)';
-      ctx.fillRect(x0 + c.width - 2, y, 2, plankH);
+  const plankH = c.height / ROWS, pxPerCm = c.width / 257.6;
+  const tones = ['#c4ae94', '#b9a389', '#cab59c', '#bfa98f', '#b39d85', '#c6b299', '#bba68f'];   // 卡其灰調淺橡木（取自產品照片）
+  const offs = [0, 0.38, 0.77, 0.21, 0.6, 0.93, 0.47, 0.13];      // 各排端縫起點（單片長的比例），相鄰排錯開 >= 25%
+  let toneK = 0;
+  for (let i = 0; i < ROWS; i++) {
+    const y = i * plankH, plankW = PL * pxPerCm;
+    for (let x0 = offs[i] * plankW - plankW; x0 < c.width; x0 += plankW) {
+      const tone = tones[(toneK++ * 3 + i) % tones.length];
+      const draw = (sx) => {
+        ctx.save(); ctx.beginPath(); ctx.rect(sx, y, plankW, plankH); ctx.clip();
+        ctx.fillStyle = tone; ctx.fillRect(sx, y, plankW, plankH);
+        // 長條順紋：深淺不一的細線，略帶起伏
+        for (let k = 0; k < 26; k++) {
+          const dark = Math.random() < 0.6;
+          ctx.strokeStyle = dark ? `rgba(120,96,70,${0.05 + Math.random() * 0.12})` : `rgba(235,222,200,${0.06 + Math.random() * 0.1})`;
+          ctx.lineWidth = 0.8 + Math.random() * 2.4;
+          const gy = y + Math.random() * plankH, ph = Math.random() * 6, amp = 1 + Math.random() * 3;
+          ctx.beginPath(); ctx.moveTo(sx, gy);
+          for (let x = 0; x <= plankW; x += 48) ctx.lineTo(sx + x, gy + Math.sin(x / 140 + ph) * amp);
+          ctx.stroke();
+        }
+        // 山紋（拉長的橢圓弧）+ 偶爾的小節點
+        for (let k = 0; k < 2; k++) {
+          const cx = sx + Math.random() * plankW, cy = y + plankH * (0.3 + Math.random() * 0.4);
+          for (let r = 1; r <= 4; r++) {
+            ctx.strokeStyle = `rgba(110,86,60,${0.07 + Math.random() * 0.06})`; ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.ellipse(cx, cy, 40 + r * 38, 3 + r * 4.5, 0, 0, Math.PI * 2); ctx.stroke();
+          }
+          if (Math.random() < 0.5) { ctx.fillStyle = 'rgba(100,76,52,.25)'; ctx.beginPath(); ctx.ellipse(cx + 30, cy, 6, 3, 0, 0, Math.PI * 2); ctx.fill(); }
+        }
+        ctx.restore();
+        ctx.fillStyle = 'rgba(95,75,55,.35)'; ctx.fillRect(sx + plankW - 2, y, 2, plankH);   // 端縫
+      };
+      draw(x0);
+      if (x0 + plankW > c.width) draw(x0 - c.width);              // 跨過右緣的那片，左邊補上，貼圖才能無縫重複
     }
-    // 長邊縫
-    ctx.fillStyle = 'rgba(120,90,60,.4)';
-    ctx.fillRect(0, y + plankH - 2, c.width, 2);
+    ctx.fillStyle = 'rgba(95,75,55,.4)'; ctx.fillRect(0, y + plankH - 2, c.width, 2);       // 長邊縫
   }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -237,11 +253,23 @@ function box(x1, y1, x2, y2, z0, z1, material, { collide = false, group = scene 
 }
 const wall = (r, m) => box(...r, 0, CEIL_H, m, { collide: true });
 const door = (r, m) => box(...r, DOOR_H, CEIL_H, m);           // 門洞上方門楣
-const win = (r, m, sill = SILL_H) => {                          // 窗：窗台 + 玻璃 + 窗楣
+const winAlu = new THREE.MeshStandardMaterial({ color: 0x1c1c1e, roughness: 0.4, metalness: 0.5 });   // 黑色鋁框（同 DW1）
+const win = (r, m, sill = SILL_H, { top = WIN_TOP, frame = true } = {}) => {   // 窗：窗台 + 玻璃 + 窗楣（+ 鋁框）
   if (sill > 0) box(...r, 0, sill, m, { collide: true });
   else solids.push(r);
-  box(...r, sill, WIN_TOP, mat.glass);
-  box(...r, WIN_TOP, CEIL_H, m);
+  box(...r, sill, top, mat.glass);
+  box(...r, top, CEIL_H, m);
+  if (!frame) return;
+  // 窗型（依窗型圖）：下段 FIX 固定窗 sill ~ sill+60；上段兩扇橫拉窗（中間對開）到窗頂；外框 / 橫料 / 中間搭接立料寬 4cm、深 6cm
+  const alongY = r[3] - r[1] > r[2] - r[0];
+  const [a1, a2] = alongY ? [r[1], r[3]] : [r[0], r[2]];
+  const c = alongY ? (r[0] + r[2]) / 2 : (r[1] + r[3]) / 2, d = 3 / CM_PER_PX, F = 4 / CM_PER_PX;   // cm2px 在後面才定義，這裡直接換算
+  const seg = (b1, b2, z0, z1) => alongY ? box(c - d, b1, c + d, b2, z0, z1, winAlu) : box(b1, c - d, b2, c + d, z0, z1, winAlu);
+  const zt = sill + WIN_FIX, mid = (a1 + a2) / 2;
+  seg(a1, a1 + F, sill, top); seg(a2 - F, a2, sill, top);        // 左右立框
+  seg(a1, a2, sill, sill + 4); seg(a1, a2, top - 4, top);          // 下框、上框
+  seg(a1, a2, zt - 2, zt + 2);                                     // FIX 與橫拉窗之間的橫料
+  seg(mid - F, mid + F, zt + 2, top - 4);                          // 兩扇橫拉窗中間搭接立料
 };
 
 // ---------- 地板 / 天花板 ----------
@@ -293,10 +321,10 @@ box(658, 635, 685, 770, KITCHEN_CEIL_H, CEIL_H, mat.ceil, { group: ceilingGroup 
 
 door([23, 268, 38, 375], mat.rc);                 // FD2 大門
 // DW1 陽台拉門：見下方「陽台鋁框拉門」
-win([913, 268, 920, 472], mat.rc, 0);             // 往冷氣平台的落地窗
-win([913, 505, 925, 657], mat.rc);                // W2
-win([958, 740, 970, 905], mat.rc);                // W1
-win([455, 1066, 618, 1080], mat.rc);              // W5
+win([913, 268, 920, 472], mat.rc, 0, { top: 210, frame: false });   // 往冷氣平台的落地窗（窗型圖未標，維持原樣）
+win([913, 505, 925, 657], mat.rc);                // W2 次臥東窗（窗型圖 150 寬）
+win([958, 740, 970, 905], mat.rc);                // W1 主臥東窗（窗型圖 165 寬）
+win([455, 1066, 618, 1080], mat.rc);              // W5 主臥南窗（窗型圖 160 寬）
 
 // ---------- 輕隔間 ----------
 [
@@ -327,6 +355,23 @@ function mover(pivot, apply, meshes, origin) {
   const m = { pivot, apply, origin, t: 0, open: false };
   meshes.forEach(x => { x.userData.mover = m; });
   movers.push(m);
+  return m;
+}
+// 可拉出的家具（椅子 / 凳子）：build() 期間加進場景的物件收成一組，點擊後平移 (dxCm, dyCm)，碰撞矩形跟著移
+function movable(build, dxCm, dyCm) {
+  const n = scene.children.length, ns = solids.length;
+  build();
+  const g = new THREE.Group();
+  scene.children.slice(n).forEach(o => g.add(o));
+  scene.add(g);
+  const rects = solids.slice(ns).map(r => [r, r.slice(0, 4)]);
+  const dx = dxCm / CM_PER_PX, dy = dyCm / CM_PER_PX, meshes = [];
+  g.traverse(o => { if (o.isMesh) meshes.push(o); });
+  const m = mover(g, k => {
+    g.position.set(px2m(dx * k), 0, px2m(dy * k));
+    rects.forEach(([r, o]) => { r[0] = o[0] + dx * k; r[2] = o[2] + dx * k; r[1] = o[1] + dy * k; r[3] = o[3] + dy * k; });
+  }, meshes);
+  m.kind = 'room';                                                                    // 不受「櫃門：全開 / 全關」影響
   return m;
 }
 // 房門：鉸鍊在 (hx, hy)，closedDeg / openDeg 為關門、全開時門片方向（0 = 朝 +x，-90 = 朝 +y）
@@ -392,15 +437,15 @@ function makeGrainTexture(base, line, { n = 150, alpha = 0.16 } = {}) {
   return t;
 }
 cab.greige = new THREE.MeshStandardMaterial({ color: 0xc9c4b8, roughness: 0.7 });
-cab.oakGrain = new THREE.MeshStandardMaterial({ map: makeGrainTexture('#cfae82', '120,84,48', { alpha: 0.22 }), roughness: 0.7 });
+cab.oakGrain = new THREE.MeshStandardMaterial({ map: makeGrainTexture('#d9c4a0', '140,108,70', { n: 140, alpha: 0.18 }), roughness: 0.6 });   // 與主臥 MODO 收納櫃同色（原木色白橡木）
 cab.paleGrain = new THREE.MeshStandardMaterial({ map: makeGrainTexture('#dad5c8', '128,118,98', { n: 190, alpha: 0.2 }), roughness: 0.65 });
 // 臥室櫃色切換（面板按鈕）：cab.paleGrain 這個材質在「洗白木」與「橡木（同電視櫃）」兩張貼圖之間切換；
 // 套用範圍 = 主臥入口收納櫃、次臥全部櫃體（架高地板、內嵌高櫃、吊櫃開放格）與臥室櫃內板材
 // cab.bedWood：床頭板 + 包柱板；nichePegMat：主臥入口收納櫃洞洞板（在該段建立）
-cab.bedWood = new THREE.MeshStandardMaterial({ map: cab.paleGrain.map, roughness: 0.65 });
+cab.bedWood = new THREE.MeshStandardMaterial({ map: cab.oakGrain.map, roughness: 0.6 });   // 床頭背板固定用 MODO 同色橡木
 let nichePegMat = null;
 const BEDROOM_WOODS = [
-  { name: '洗白木', shell: cab.paleGrain.map, shellColor: 0xffffff, bed: cab.paleGrain.map, peg: 0xffffff },
+  { name: '洗白木', shell: cab.paleGrain.map, shellColor: 0xffffff, bed: cab.oakGrain.map, peg: 0xffffff },
   { name: '橡木', shell: cab.oakGrain.map, shellColor: 0xffffff, bed: cab.oakGrain.map, peg: 0xffffff },          // 與電視櫃、玄關櫃同一張橡木紋貼圖
   { name: '米灰＋橡木', shell: null, shellColor: 0xc9c4b8, bed: cab.oakGrain.map, peg: 0xd9b98c },              // 門片 / 櫃體米灰、開放格洞洞板橡木色、床頭板橡木
 ];
@@ -817,29 +862,31 @@ setShowcase(showcaseMode);
 }
 
 // ---------- 陽台鋁框拉門（DW1，x 737~750、y 268~430） ----------
-// 黑色鋁框兩片式橫拉門：外框 4cm、門扇邊框 4cm、上下冒頭 5cm，雙軌錯位，中間搭接 4cm；門楣 210cm
-const DW1 = { x1: 737, x2: 750, y1: 268, y2: 430, h: WIN_TOP };
+// 黑色鋁框兩片式橫拉門：外框 4cm、門扇邊框 4cm、上下冒頭 5cm，雙軌錯位，中間搭接 4cm；
+// 依窗型圖：門檻離地 10cm、門高 210 → 門楣 220cm
+const DW1 = { x1: 737, x2: 750, y1: 268, y2: 430, z0: 10, h: 220 };
 const alu = new THREE.MeshStandardMaterial({ color: 0x1c1c1e, roughness: 0.4, metalness: 0.5 });
 const dw1Solid = [DW1.x1, DW1.y1, DW1.x2, DW1.y2];
 solids.push(dw1Solid);
 box(DW1.x1, DW1.y1, DW1.x2, DW1.y2, DW1.h, CEIL_H, mat.rc);                          // 門楣
+box(DW1.x1, DW1.y1, DW1.x2, DW1.y2, 0, DW1.z0, mat.rc);                              // 門檻（離地 10cm）
 {
   const FR = cm2px(4), fx1 = DW1.x1 + cm2px(1), fx2 = DW1.x2 - cm2px(1);
-  box(fx1, DW1.y1, fx2, DW1.y1 + FR, 0, DW1.h, alu);                                  // 外框：左右立框
-  box(fx1, DW1.y2 - FR, fx2, DW1.y2, 0, DW1.h, alu);
+  box(fx1, DW1.y1, fx2, DW1.y1 + FR, DW1.z0, DW1.h, alu);                                  // 外框：左右立框
+  box(fx1, DW1.y2 - FR, fx2, DW1.y2, DW1.z0, DW1.h, alu);
   box(fx1, DW1.y1, fx2, DW1.y2, DW1.h - 4, DW1.h, alu);                               // 上框
-  box(fx1, DW1.y1, fx2, DW1.y2, 0, 1.5, alu);                                         // 下軌
+  box(fx1, DW1.y1, fx2, DW1.y2, DW1.z0, DW1.z0 + 1.5, alu);                                         // 下軌
   const in1 = DW1.y1 + FR, in2 = DW1.y2 - FR;
   const W = (in2 - in1 + cm2px(4)) / 2;                                               // 單扇寬（含搭接）
   const mid = (fx1 + fx2) / 2;
   const leaf = (ya, yb, xa, xb, group = scene) => {
     const S = cm2px(4), o = { group };
-    box(xa, ya, xb, ya + S, 1.5, DW1.h - 4, alu, o);                                  // 邊框
-    box(xa, yb - S, xb, yb, 1.5, DW1.h - 4, alu, o);
-    box(xa, ya, xb, yb, 1.5, 6.5, alu, o);                                            // 下冒頭
+    box(xa, ya, xb, ya + S, DW1.z0 + 1.5, DW1.h - 4, alu, o);                                  // 邊框
+    box(xa, yb - S, xb, yb, DW1.z0 + 1.5, DW1.h - 4, alu, o);
+    box(xa, ya, xb, yb, DW1.z0 + 1.5, DW1.z0 + 6.5, alu, o);                                            // 下冒頭
     box(xa, ya, xb, yb, DW1.h - 9, DW1.h - 4, alu, o);                                // 上冒頭
     const gx = (xa + xb) / 2;
-    box(gx - cm2px(0.25), ya + S, gx + cm2px(0.25), yb - S, 6.5, DW1.h - 9, mat.glass, o);
+    box(gx - cm2px(0.25), ya + S, gx + cm2px(0.25), yb - S, DW1.z0 + 6.5, DW1.h - 9, mat.glass, o);
   };
   // 室內側門扇可滑開（點邊框或按 E）：往另一扇方向疊過去；關著時擋住通行
   const slide = new THREE.Group();
@@ -1137,7 +1184,7 @@ spot(P(265, TRACK.y, CEIL_H - 14), P(265, 380, 45), { angle: 70, lm: 1200, room:
 
 // 3. 餐廳：長條吊燈 90cm（比 120cm 桌長兩端各短 15cm），沿餐桌長邊（南北向），燈體離地約 155cm（桌面上方約 80cm）
 //    餐桌短邊靠 J5 下方牆（y 527），桌中心見 DINING；兩條吊線都從 245cm 降板垂下（J5 包樑已包在降板內）
-const DINING = { x: 474, y: 526 - cm2px(60) };
+const DINING = { x: 474 + cm2px(30), y: 526 - cm2px(70) };   // 桌中心（STENÅRED 140cm 桌長，短邊靠牆；往走道側移 30cm，吊燈跟著走）
 box(DINING.x - cm2px(3), DINING.y - cm2px(45), DINING.x + cm2px(3), DINING.y + cm2px(45), 152, 157, fixtureMat.black);
 box(DINING.x - cm2px(2), DINING.y - cm2px(43), DINING.x + cm2px(2), DINING.y + cm2px(43), 151.8, 152, fixtureMat.lamp);
 [-38, 38].forEach(dy => {
@@ -1204,39 +1251,86 @@ const camelDark = fabric(0x8f7050);
   });
 }
 
-// 餐桌：120 x 80cm、桌高 75cm，短邊靠 J5 下方牆（沙發右側與走道之間），長邊南北向；淺木桌面 + 黑色細桌腳
+// 餐桌：IKEA STENÅRED 140 x 75cm、桌高 74cm（仿石紋白色石英石桌面 + 竹製桌框與外斜錐腳），短邊靠 J5 下方牆，長邊南北向
 // 西側（沙發側）2 張無扶手餐椅、東側（走道側）1 張長凳，長凳可完全收進桌下，不擋走道
-const TABLE = { x1: DINING.x - cm2px(40), x2: DINING.x + cm2px(40), y1: DINING.y - cm2px(60), y2: DINING.y + cm2px(60) };
+const TABLE = { x1: DINING.x - cm2px(37.5), x2: DINING.x + cm2px(37.5), y1: DINING.y - cm2px(70), y2: DINING.y + cm2px(70) };
 const slab = new THREE.MeshStandardMaterial({ map: makeConcreteTexture(), color: 0xf6f4f0, roughness: 0.3 });   // 偏白岩板
 const cream = fabric(0xe8e0d0);                                                                                 // 米白布料
 {
   const { x1, x2, y1, y2 } = TABLE;
-  box(x1, y1, x2, y2, 73, 75, slab, { collide: true });                             // 岩板桌面 2cm
-  box(x1 + cm2px(4), y1 + cm2px(4), x2 - cm2px(4), y2 - cm2px(4), 70, 73, cab.oak); // 木桌框
-  const inset = cm2px(6), leg = cm2px(5);
-  [[x1 + inset, y1 + inset], [x2 - inset - leg, y1 + inset], [x1 + inset, y2 - inset - leg], [x2 - inset - leg, y2 - inset - leg]]
-    .forEach(([lx, ly]) => box(lx, ly, lx + leg, ly + leg, 0, 70, cab.oak));
+  const bamboo = new THREE.MeshStandardMaterial({ map: makeGrainTexture('#d6a873', '150,100,52', { n: 120, alpha: 0.22 }), roughness: 0.55 });
+  const quartz = new THREE.MeshStandardMaterial({ map: makeConcreteTexture(), color: 0xfbfaf6, roughness: 0.25 });
+  softBox(x1, y1, x2, y2, 72, 74, 0.6, quartz);                          // 石英石桌面 2cm（小圓角）
+  solids.push([x1, y1, x2, y2]);
+  const ins = cm2px(5), T = cm2px(2.2);
+  box(x1 + ins, y1 + ins, x1 + ins + T, y2 - ins, 64, 72, bamboo);                   // 竹製牙板（四邊，高 8cm）
+  box(x2 - ins - T, y1 + ins, x2 - ins, y2 - ins, 64, 72, bamboo);
+  box(x1 + ins, y1 + ins, x2 - ins, y1 + ins + T, 64, 72, bamboo);
+  box(x1 + ins, y2 - ins - T, x2 - ins, y2 - ins, 64, 72, bamboo);
+  // 外斜錐腳：頂部 4.5cm 方、底部 3cm，往長邊方向外斜約 7cm、短邊方向約 3cm
+  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy]) => {
+    const tx = sx > 0 ? x2 - ins - cm2px(2.25) : x1 + ins + cm2px(2.25), ty = sy > 0 ? y2 - ins - cm2px(2.25) : y1 + ins + cm2px(2.25);
+    const a = new THREE.Vector3(px2m(tx - ORIGIN.x), cm2m(72), px2m(ty - ORIGIN.y));
+    const b = new THREE.Vector3(px2m(tx + sx * cm2px(3) - ORIGIN.x), 0, px2m(ty + sy * cm2px(7) - ORIGIN.y));
+    const d = b.clone().sub(a);
+    const g = new THREE.CylinderGeometry(cm2m(1.5 * Math.SQRT2), cm2m(2.25 * Math.SQRT2), d.length(), 4).rotateY(Math.PI / 4);
+    const m = new THREE.Mesh(g, bamboo);
+    m.position.copy(a).add(b).multiplyScalar(0.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), d.normalize());
+    m.castShadow = true; scene.add(m);
+  });
 }
-// 無扶手餐椅 x2：座寬 44、座深 46、座高 45、椅背高 84cm，米白布料座墊 + 布料椅背 + 木腳，面朝東、前緣略收入桌下
-[-28, 28].forEach(dy => {
-  const cy = DINING.y + cm2px(dy), W = cm2px(44), D = cm2px(46);
-  const xf = TABLE.x1 + cm2px(8), xb = xf - D, y1 = cy - W / 2, y2 = cy + W / 2, leg = cm2px(3.5);
-  box(xb, y1, xf, y2, 38, 40, cab.oak, { collide: true });                          // 木座框
-  Object.assign(solids[solids.length - 1], { seat: true, top: 45 });
-  softBox(xb, y1, xf, y2, 40, 45, 2, cream);                                        // 布料座墊
-  softBox(xb, y1 + cm2px(1), xb + cm2px(5), y2 - cm2px(1), 56, 84, 2, cream);       // 布料椅背
-  [[xb + cm2px(1.5), y1 + cm2px(1.5)], [xf - cm2px(5), y1 + cm2px(1.5)], [xb + cm2px(1.5), y2 - cm2px(5)], [xf - cm2px(5), y2 - cm2px(5)]]
-    .forEach(([lx, ly]) => box(lx, ly, lx + leg, ly + leg, 0, 38, cab.oak));
-  [y1 + cm2px(3), y2 - cm2px(5.5)].forEach(ly => box(xb + cm2px(1), ly, xb + cm2px(3.5), ly + cm2px(2.5), 45, 56, cab.oak)); // 椅背支柱
-});
-// 長凳：長 100、深 35、高 45cm，全實木（座面 + 木腳），整張收入桌下
+// 餐桌小盆栽：白色陶瓷小盆（Ø12 x 高 10）+ 圓葉綠植（類似椒草 / 小圓葉），放桌面正中央
 {
-  const L = cm2px(100), D = cm2px(35), x2 = TABLE.x2 - cm2px(3), x1 = x2 - D, y1 = DINING.y - L / 2, y2 = DINING.y + L / 2, leg = cm2px(4);
-  box(x1, y1, x2, y2, 42, 45, cab.oak, { collide: true });
-  Object.assign(solids[solids.length - 1], { seat: true, top: 45 });
-  [[x1 + cm2px(3), y1 + cm2px(5)], [x2 - cm2px(7), y1 + cm2px(5)], [x1 + cm2px(3), y2 - cm2px(9)], [x2 - cm2px(7), y2 - cm2px(9)]]
-    .forEach(([lx, ly]) => box(lx, ly, lx + leg, ly + leg, 0, 42, cab.oak));
+  const px = DINING.x, py = DINING.y, Z = 74;                                          // 桌面正中央
+  const ceramic = new THREE.MeshStandardMaterial({ color: 0xf1efea, roughness: 0.35 });
+  const soil = new THREE.MeshStandardMaterial({ color: 0x3b2b1f, roughness: 1 });
+  const leafMats = [0x245a22, 0x2f6b2a, 0x1c4a1c].map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, side: THREE.DoubleSide }));
+  const stemMat = new THREE.MeshStandardMaterial({ color: 0x5d7f3a, roughness: 0.7 });
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(cm2m(6), cm2m(4.8), cm2m(10), 28), ceramic);
+  const base = new THREE.Vector3(px2m(px - ORIGIN.x), cm2m(Z), px2m(py - ORIGIN.y));
+  pot.position.copy(base).add(new THREE.Vector3(0, cm2m(5), 0)); pot.castShadow = true; scene.add(pot);
+  const dirt = new THREE.Mesh(new THREE.CylinderGeometry(cm2m(5.6), cm2m(5.6), cm2m(0.5), 24), soil);
+  dirt.position.copy(base).add(new THREE.Vector3(0, cm2m(9.3), 0)); scene.add(dirt);
+  const leafGeo = new THREE.SphereGeometry(1, 12, 8); leafGeo.scale(cm2m(2.6), cm2m(0.35), cm2m(1.9));
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 26; i++) {                                                        // 莖從盆中心往外上方伸，末端一片圓葉
+    const a = rnd() * Math.PI * 2, r = cm2m(1 + rnd() * 6), h = cm2m(4 + rnd() * 9);
+    const tip = base.clone().add(new THREE.Vector3(Math.cos(a) * r, cm2m(9.5) + h, Math.sin(a) * r));
+    const root = base.clone().add(new THREE.Vector3(Math.cos(a) * r * 0.2, cm2m(9.5), Math.sin(a) * r * 0.2));
+    const d = tip.clone().sub(root), stem = new THREE.Mesh(new THREE.CylinderGeometry(cm2m(0.15), cm2m(0.2), d.length(), 5), stemMat);
+    stem.position.copy(root).add(tip).multiplyScalar(0.5); stem.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); scene.add(stem);
+    const leaf = new THREE.Mesh(leafGeo, leafMats[i % 3]);
+    leaf.position.copy(tip); leaf.rotation.set((rnd() - 0.5) * 0.9, -a, (rnd() - 0.3) * 0.7); leaf.castShadow = true; scene.add(leaf);
+  }
 }
+
+// 宜得利 N COLLECTION（櫸木原木色 NA + 米色防潑水貓抓布 NSF-BE）
+// 實木餐椅 C-49 x2：寬 49.5、深 54.2、高 77.7，座高約 44；西側（沙發側）面朝東，前緣略收入桌下
+const beech = new THREE.MeshStandardMaterial({ map: makeGrainTexture('#dcbf98', '150,112,72', { n: 130, alpha: 0.18 }), roughness: 0.55 });
+const nsfBeige = fabric(0xd8ccb8);
+[-33, 33].forEach(dy => movable(() => {   // 點擊往西拉出 35cm
+  const cy = DINING.y + cm2px(dy), W = cm2px(49.5), D = cm2px(54.2), L = cm2px(3.6);
+  const xf = TABLE.x1 + cm2px(10), xb = xf - D, y1 = cy - W / 2, y2 = cy + W / 2;
+  box(xb, y1, xf, y2, 36, 39, beech, { collide: true });                            // 櫸木座框
+  Object.assign(solids[solids.length - 1], { seat: true, top: 44 });
+  softBox(xb + cm2px(1.5), y1 + cm2px(1), xf, y2 - cm2px(1), 39, 44, 2.5, nsfBeige); // 布面座墊（前緣圓弧）
+  [[xf - L, y1], [xf - L, y2 - L]].forEach(([lx, ly]) => box(lx, ly, lx + L, ly + L, 0, 36, beech));   // 前腳
+  [[xb, y1], [xb, y2 - L]].forEach(([lx, ly]) => box(lx, ly, lx + L, ly + L, 0, 77.7, beech));      // 後腳一體延伸成椅背立柱
+  box(xb - cm2px(0.5), y1 + L, xb + cm2px(2.5), y2 - L, 62, 77.7, beech);           // 椅背橫板（上緣）
+  softBox(xb + cm2px(1), y1 + L, xb + cm2px(4), y2 - L, 48, 74, 1.5, nsfBeige);     // 椅背布面
+  [[y1, y1 + L], [y2 - L, y2]].forEach(([a1, a2]) => box(xb, a1, xf, a2, 12, 14.5, beech));   // 側邊橫撐
+}, -35, 0));
+// 實木長凳 B-34 110：長 110、深 40.1、高 46；東側（走道側），整張收入桌下（牙板下緣 64cm）；點擊往東拉出 35cm
+movable(() => {
+  const Lb = cm2px(110), D = cm2px(40.1), x2 = TABLE.x2 - cm2px(3), x1 = x2 - D, y1 = DINING.y - Lb / 2, y2 = DINING.y + Lb / 2, L = cm2px(4);
+  box(x1, y1, x2, y2, 37, 40, beech, { collide: true });                            // 櫸木座框
+  Object.assign(solids[solids.length - 1], { seat: true, top: 46 });
+  softBox(x1 + cm2px(0.5), y1 + cm2px(0.5), x2 - cm2px(0.5), y2 - cm2px(0.5), 40, 46, 2.5, nsfBeige);   // 布面座墊
+  [[x1 + cm2px(2), y1 + cm2px(3)], [x2 - cm2px(2) - L, y1 + cm2px(3)], [x1 + cm2px(2), y2 - cm2px(3) - L], [x2 - cm2px(2) - L, y2 - cm2px(3) - L]]
+    .forEach(([lx, ly]) => box(lx, ly, lx + L, ly + L, 0, 37, beech));
+  [y1 + cm2px(3), y2 - cm2px(3) - L].forEach(ly => box(x1 + cm2px(2), ly, x2 - cm2px(2), ly + L, 12, 15, beech));   // 兩端橫撐
+}, 35, 0);
 
 // ---------- 主臥（最大間，x 415~958、y 780~1066，約 532 x 280cm） ----------
 // 參考圖配置：床頭靠南牆（W5 窗與右下 RC 柱之間，上方為 G2 包樑）；西牆整面頂天衣櫃；
@@ -1246,7 +1340,8 @@ const MB = { wall: 415, south: 1066, north: 780 };
 // 床：床架 182 x 188cm，低矮平台床，窗側邊緣在 x 630，柱側到包柱木板約 25cm；床頭背板與床分離，做成靠牆的 10cm 木紋牆板（高 105cm），
 //     從窗洞邊緣（x 618，不擋窗）拉到柱面（x 851），窗側比床多出約 12cm；W5 風琴簾東側因此收在窗洞邊、不外擴
 // 床尾到北牆（y 780）走道約 81cm
-const BED = { cx: 630 + 182 / 2 / CM_PER_PX, w: 182, l: 188, hb: 10, hbH: 105 };
+const BED = { cx: 630 - 16.5 / CM_PER_PX + 182 / 2 / CM_PER_PX,   // 床往西（窗側）移 16.5cm，東側貼床頭櫃（留約 1cm）
+              w: 182, l: 188, hb: 10, hbH: 105 };
 let bedHeadboard, colWrap = [];
 {
   const x1 = BED.cx - cm2px(BED.w / 2), x2 = BED.cx + cm2px(BED.w / 2);
@@ -1257,9 +1352,8 @@ let bedHeadboard, colWrap = [];
   hbTex.needsUpdate = true;
   hbTex.repeat.set(px2m(851 - 618) / WOOD_TILE.w, cm2m(BED.hbH) / WOOD_TILE.d);
   bedHeadboard = softBox(618, y2, 851, yWall, 0, BED.hbH, 1, cab.bedWood);   // 與臥室櫃體同一木紋（跟著「臥室櫃色」按鈕切換） // 床頭木紋牆板（獨立於床，窗洞邊緣到柱面）
-  // 床旁 RC 柱（x 851~973、y 958~1080）露在主臥的西面與北面，同材質、同高度、同厚度（10cm）包木紋板，與床頭板連成一圈
-  // 床與柱之間走道因此由約 35cm 縮為約 25cm
-  const T = cm2px(BED.hb);
+  // 床旁 RC 柱（x 851~973、y 958~1080）露在主臥的西面與北面，同材質、同高度包木紋板（厚 5cm，比床頭板 10cm 薄），與床頭板連成一圈
+  const T = cm2px(5);
   const wrapMat = (lenPx) => {
     const t = woodTexture.clone();
     t.needsUpdate = true;
@@ -1354,7 +1448,7 @@ let bedHeadboard, colWrap = [];
 // 西牆整面衣櫃（深 68cm）：由北而南 C 轉角固定封板（49cm，被電子衣櫥櫃擋住）→ M 主衣櫃 3 門上下兩段（170cm）→ N 全開放吊衣格（深 40，避開 W5 窗）
 // C、M 段頂天（到天花 320cm，上方無樑）；N 段頂到 G2 包樑下緣 245cm
 {
-  const D = 58.2, xf = MB.wall + cm2px(D), xd = MB.wall + cm2px(D + 1.8), TOP = CEIL_H;   // 衣櫃總深 60cm（設計師圖）
+  const D = 61.8, xf = MB.wall + cm2px(D), xd = MB.wall + cm2px(D + 1.8), TOP = CEIL_H;   // 淨深 60（櫃體 61.8 含背板、總深約 63.6 含門片）：58x30x82 行李箱可轉向放
   // 設計師圖：總長 230 = 120（轉角 60 + 單門 60）+ 110（雙門各 55）
   const yC = [MB.north, MB.north + cm2px(60)], yM = [yC[1], MB.north + cm2px(230)], yN = [yM[1], MB.south];
   const wFront = (y1, y2, z0, z1, n) => {
@@ -1368,9 +1462,9 @@ let bedHeadboard, colWrap = [];
   box(MB.wall, yC[0], xd, yC[1], 8, TOP, cab.greige);
   // M：主衣櫃
   // 內部（720 參考圖）：北側窄格（1 門）+ 南側寬格（2 門對開）；下段各有上下兩支吊衣桿（中間層板 100cm），上段（200cm 以上）再一層層板
-  const yDiv = yM[0] + cm2px(60), DE = [yM[0], yDiv, (yDiv + yM[1]) / 2, yM[1]], xr = MB.wall + cm2px(29);
+  const yDiv = yM[0] + cm2px(60), DE = [yM[0], yDiv, (yDiv + yM[1]) / 2, yM[1]], xr = MB.wall + cm2px(31);
   carcass(MB.wall, yM[0], xf, yM[1], 8, TOP, cab.greige, { face: 'x+', shelves: [100, 200, 260], dividers: [yDiv] });
-  [[yM[0], yDiv], [yDiv, yM[1]]].forEach(([a, b]) => [93, 193].forEach(z => {                // 吊衣桿（直徑 2.5cm 圓管，兩端頂到側板 / 中立板）
+  [[yM[0], yDiv, 96], [yDiv, yM[1], 93]].forEach(([a, b, zl]) => [zl, 193].forEach(z => {   // 吊衣桿（直徑 2.5cm 圓管，兩端頂到側板 / 中立板）；窄格下桿上移到 96，下方淨高約 85 可立放行李箱
     const m = new THREE.Mesh(new THREE.CylinderGeometry(cm2m(1.25), cm2m(1.25), px2m(b - a - cm2px(2.7)), 20).rotateX(Math.PI / 2), cab.steel);
     m.position.set(px2m(xr - ORIGIN.x), cm2m(z), px2m((a + b) / 2 - ORIGIN.y));
     scene.add(m);
@@ -1398,6 +1492,147 @@ let bedHeadboard, colWrap = [];
       rodMesh(cm2px(1.2), 3, yb - cm2px(0.6), zc);
     });
   }
+}
+
+// ---------- 主臥 W1 窗下：MODO 組合收納櫃（Mr.Living 居家先生，原木色白橡木，單格 40x40x40）----------
+// 背靠東牆（x 958）、開口朝西，3 格寬 x 1 層 = 120 x 40 x 40（單格 x 3），
+// 南端貼柱子包板（厚 5，y 952.9）往北 3 格，北端離北牆約 39cm；窗台高 60（低台度），櫃高 40 整座收在窗台下
+{
+  const modoOak = cab.oakGrain;   // 與全屋橡木櫃同一材質
+  const x2 = 958, x1 = x2 - cm2px(40), y2 = 958 - cm2px(5), y1 = y2 - cm2px(120), cell = cm2px(40);
+  solids.push(Object.assign([x1, y1, x2, y2], { top: 40 }));
+  for (let i = 0; i < 1; i++) carcass(x1, y1, x2, y2, i * 40, (i + 1) * 40, modoOak, { face: 'x-', inner: modoOak, dividers: [y1 + cell, y1 + 2 * cell], T: 2 });
+}
+
+// ---------- 主臥立燈：IKEA ISJAKT LED 上照落地燈 / 閱讀燈（鍍鎳，高 180、寬 50、底座 Ø24）----------
+// 兩支：主臥床頭板西側（燈臂朝東伸向床）、客廳沙發與餐桌之間（燈臂朝西伸向沙發）。上照 1850 lm、閱讀燈 350 lm，2700K，面板「立燈」按鈕一起開關（預設開）
+// s = 閱讀燈臂方向（+1 朝東 / -1 朝西）；回傳開關函式
+function isjakt(LX, LY, s = 1) {
+  const nickel = new THREE.MeshStandardMaterial({ color: 0xc8c8c4, metalness: 0.3, roughness: 0.3 });
+  const rubber = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9 });
+  const P = (x, y, z) => new THREE.Vector3(px2m(x - ORIGIN.x), cm2m(z), px2m(y - ORIGIN.y));
+  const tube = (a, b, rCm) => {                                                        // 兩點之間的圓管
+    const d = b.clone().sub(a), m = new THREE.Mesh(new THREE.CylinderGeometry(cm2m(rCm), cm2m(rCm), d.length(), 16), nickel);
+    m.position.copy(a).add(b).multiplyScalar(0.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+    m.castShadow = true; scene.add(m);
+  };
+  const X2 = LX + s * cm2px(6), ARM = LX + s * cm2px(38);                                      // 第二支管（閱讀燈）在主管東側 6cm；燈臂伸到 38cm
+  cyl(LX + s * cm2px(3), LY, 11, 0, 0.8, rubber);                                         // 底座止滑墊
+  cyl(LX + s * cm2px(3), LY, 12, 0.8, 2.8, nickel);                                       // 圓底座 Ø24
+  cyl(LX, LY, 0.9, 2.8, 177, nickel);                                                 // 主管
+  cyl(LX, LY, 13, 177, 179, nickel);                                                  // 上照燈罩（淺盤 Ø26）
+  cyl(LX, LY, 2.5, 175, 177, nickel);
+  cyl(X2, LY, 0.8, 2.8, 102, nickel);                                                 // 閱讀燈管
+  box(Math.min(LX, X2) - cm2px(1), LY - cm2px(2.5), Math.max(LX, X2) + cm2px(1), LY + cm2px(2.5), 74, 88, nickel); // 開關 / 調光座
+  tube(P(X2, LY, 102), P(X2 + s * cm2px(3), LY, 109), 0.8);                               // 彎管
+  tube(P(X2 + s * cm2px(3), LY, 109), P(ARM, LY, 113), 0.8);                              // 燈臂（微上揚）
+  cyl(ARM - s * cm2px(2), LY, 0.5, 108.5, 113, nickel);                                   // 吊頭
+  cyl(ARM - s * cm2px(2), LY, 5, 106, 108.5, nickel);                                     // 閱讀燈頭 Ø10
+  const glowUp = new THREE.MeshBasicMaterial({ color: 0x3a3226 }), glowRd = new THREE.MeshBasicMaterial({ color: 0x3a3226 });
+  const up = new THREE.Mesh(new THREE.CircleGeometry(cm2m(11.5), 32).rotateX(-Math.PI / 2), glowUp);
+  up.position.copy(P(LX, LY, 179.1)); scene.add(up);
+  const rd = new THREE.Mesh(new THREE.CircleGeometry(cm2m(4.2), 24).rotateX(Math.PI / 2), glowRd);
+  rd.position.copy(P(ARM - s * cm2px(2), LY, 105.9)); scene.add(rd);
+  const lUp = spot(P(LX, LY, 182), P(LX, LY, 320), { lm: 1850, angle: 140, distance: 6 });   // 上照：打天花再漫射
+  const lRd = spot(P(ARM - s * cm2px(2), LY, 105), P(ARM + s * cm2px(10), LY - cm2px(30), 50), { lm: 350, angle: 70, distance: 3 });   // 閱讀燈：斜照床頭
+  const I = [lUp.intensity, lRd.intensity];
+  solids.push([Math.min(LX - s * cm2px(9), LX + s * cm2px(15)), LY - cm2px(12), Math.max(LX - s * cm2px(9), LX + s * cm2px(15)), LY + cm2px(12)]);
+  return (on) => {
+    lUp.intensity = on ? I[0] : 0; lRd.intensity = on ? I[1] : 0;
+    glowUp.color.set(on ? 0xfff0d8 : 0x3a3226); glowRd.color.set(on ? 0xfff0d8 : 0x3a3226);
+  };
+}
+const lamps = [
+  isjakt(603 - cm2px(30), 1048, 1),   // 主臥：床頭板西側（跟著床往西移 30cm），燈臂朝東伸向床
+  isjakt(370 + cm2px(13), 527 - cm2px(16), -1),   // 客廳：沙發東側扶手與餐椅之間、靠南牆，燈臂朝西伸向沙發
+];
+const floorLamp = (on) => lamps.forEach(f => f(on));
+floorLamp(true);   // 預設開燈
+
+// ---------- 主臥：宜得利懶骨頭沙發（卡其色，約 Ø70 x 高 45cm）----------
+// 放在床東側、MODO 收納櫃前與柱子包板之間的地板（x 816~917 的空地）；軟塌的豆袋外型：底部壓平、頂面凹陷、略往後靠
+{
+  const bx = 866, by = 905, R = 0.36, H = 0.45;
+  const geo = new THREE.SphereGeometry(1, 48, 32);
+  const p = geo.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    let y = v.y;
+    const sag = 1 + 0.12 * Math.max(0, -y);                                                // 下半部往外鼓
+    let x = v.x * sag, z = v.z * sag;
+    if (y < -0.55) y = -0.55 - (y + 0.55) * 0.08;                                            // 底部壓平貼地
+    const r = Math.hypot(v.x, v.z);
+    if (y > 0.3) y -= 0.35 * Math.max(0, 1 - r * 1.6) * (y - 0.3) * 2.2;                    // 頂面坐出凹陷
+    if (v.z > 0 && y > 0) y += 0.25 * v.z * y;                                               // 背側（東）略高，像靠背
+    y += 0.03 * Math.sin(v.x * 9 + v.z * 7);                                                 // 布面皺褶
+    p.setXYZ(i, x, y, z);
+  }
+  geo.computeBoundingBox();
+  const bb = geo.boundingBox;
+  geo.translate(0, -bb.min.y, 0);
+  geo.scale(R, H / (bb.max.y - bb.min.y), R);
+  geo.rotateY(-Math.PI / 2);                                                                 // 靠背朝東牆
+  geo.computeVertexNormals();
+  const bag = new THREE.Mesh(geo, fabric(0xa99f86));   // 卡其（偏灰，暖光下不偏橘）
+  bag.position.set(px2m(bx - ORIGIN.x), 0, px2m(by - ORIGIN.y));
+  bag.castShadow = bag.receiveShadow = true;
+  scene.add(bag);
+  solids.push(Object.assign([bx - cm2px(34), by - cm2px(34), bx + cm2px(34), by + cm2px(34)], { seat: true, top: 32 }));
+}
+
+// ---------- 主臥床頭櫃：Mr.Living Fishbone 收納邊几（白橡木魚骨拼花，寬 45 x 深 40 x 高 59，腳高 18.3）----------
+// 放在床東側：東側板貼齊柱子包板（厚 5）、背面貼齊床頭板；面朝北，上下兩層抽屜（點擊拉出），三角信封把手，外斜 A 字實木腳 + 橫撐
+{
+  const W = cm2px(45), D = cm2px(40), x2 = 851 - cm2px(5), x1 = x2 - W;
+  const yb = MB.south - cm2px(1) - cm2px(BED.hb), yf = yb - D;
+  const oak = new THREE.MeshStandardMaterial({ map: makeGrainTexture('#d4ab80', '150,100,62', { n: 110, alpha: 0.2 }), roughness: 0.55 });
+  const chevron = (() => {                                                                   // 魚骨拼花：左右兩半斜紋在中線相接成 V
+    const c = document.createElement('canvas'); c.width = 256; c.height = 128;
+    const g = c.getContext('2d');
+    g.fillStyle = '#cfa47a'; g.fillRect(0, 0, 256, 128);
+    for (let k = 0; k < 90; k++) {
+      const y0 = Math.random() * 300 - 150, a = 0.08 + Math.random() * 0.14;
+      g.strokeStyle = `rgba(${Math.random() < 0.5 ? '150,98,58' : '235,205,165'},${a})`; g.lineWidth = 0.8 + Math.random() * 2;
+      g.beginPath(); g.moveTo(0, y0); g.lineTo(128, y0 + 70); g.stroke();                   // 左半：往中線向下
+      g.beginPath(); g.moveTo(256, y0); g.lineTo(128, y0 + 70); g.stroke();                 // 右半：對稱
+    }
+    for (let x = 32; x < 256; x += 32) { g.strokeStyle = 'rgba(120,80,45,.18)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 128); g.stroke(); }   // 拼板縫
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+    return new THREE.MeshStandardMaterial({ map: t, roughness: 0.55 });
+  })();
+  const blk = new THREE.MeshStandardMaterial({ color: 0x1c1c1c, roughness: 0.6 });
+  const L = 18.3, H = 59, T = cm2px(1.8);
+  solids.push(Object.assign([x1, yf, x2, yb], { top: H }));
+  box(x1, yf, x2, yb, H - 1.8, H, oak);                                                      // 頂板
+  box(x1, yf, x2, yb, L, L + 1.8, oak);                                                      // 底板
+  box(x1, yf, x1 + T, yb, L, H, oak); box(x2 - T, yf, x2, yb, L, H, oak);                    // 側板
+  box(x1, yb - cm2px(1), x2, yb, L, H, oak);                                                 // 背板
+  // A 字外斜腳（四角往外斜 3cm）+ 左右橫撐
+  const P = (x, y, z) => new THREE.Vector3(px2m(x - ORIGIN.x), cm2m(z), px2m(y - ORIGIN.y));
+  [[x1 + cm2px(5), yf + cm2px(5), -1, -1], [x2 - cm2px(5), yf + cm2px(5), 1, -1], [x1 + cm2px(5), yb - cm2px(5), -1, 1], [x2 - cm2px(5), yb - cm2px(5), 1, 1]].forEach(([lx, ly, sx, sy]) => {
+    const a = P(lx, ly, L), b = P(lx + sx * cm2px(2.5), ly + sy * cm2px(2.5), 0), d = b.clone().sub(a);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(cm2m(1.9), cm2m(1.5), d.length(), 16), oak);
+    m.position.copy(a).add(b).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), d.normalize()); m.castShadow = true; scene.add(m);
+  });
+  [x1 + cm2px(4.2), x2 - cm2px(5.8)].forEach(sx => box(sx, yf + cm2px(5), sx + cm2px(1.6), yb - cm2px(5), 7, 8.6, oak));   // 橫撐
+  // 抽屜 x2（框內前緣內縮 0.5cm）
+  const zA = L + 1.8, zB = H - 1.8, zM = (zA + zB) / 2, fx1 = x1 + T, fx2 = x2 - T, fy = yf + cm2px(0.5), mid = (fx1 + fx2) / 2;
+  [[zA + 0.2, zM - 0.2], [zM + 0.2, zB - 0.2]].forEach(([z0, z1]) => {
+    const g = new THREE.Group(); scene.add(g);
+    const o = { group: g };
+    const tri = new THREE.Shape(); tri.moveTo(-0.035, 0); tri.lineTo(0.035, 0); tri.lineTo(0, -0.028); tri.closePath();   // 三角信封把手（黑色凹槽）
+    const hm = new THREE.Mesh(new THREE.ShapeGeometry(tri), blk);
+    hm.rotation.y = Math.PI; hm.position.set(px2m(mid - ORIGIN.x), cm2m(z1), px2m(fy - ORIGIN.y) - 0.0015); g.add(hm);
+    const parts = [
+      box(fx1 + cm2px(0.2), fy, fx2 - cm2px(0.2), fy + cm2px(1.8), z0, z1, chevron, o),       // 魚骨拼花面板
+      box(fx1 + cm2px(1), fy + cm2px(1.8), fx1 + cm2px(2.2), yb - cm2px(3), z0, z1 - 3, oak, o),
+      box(fx2 - cm2px(2.2), fy + cm2px(1.8), fx2 - cm2px(1), yb - cm2px(3), z0, z1 - 3, oak, o),
+      box(fx1 + cm2px(1), fy + cm2px(1.8), fx2 - cm2px(1), yb - cm2px(3), z0, z0 + 1, oak, o),
+      hm,
+    ];
+    mover(g, k => { g.position.z = -px2m(cm2px(28)) * k; }, parts);
+  });
 }
 
 // ---------- 主臥床頭樑修飾方案（可切換比較）----------
@@ -1447,7 +1682,7 @@ setBeamOption(beamOption);
 // ---------- 電子衣櫥櫃（主臥西北角凹槽：主衣櫃正面 x≈484 到浴室牆垛 x 557、背靠浴室牆 y 780，開口朝南）----------
 // 電子衣櫥（寬 60 x 深 60 x 高 185cm）置中，兩側各留約 5cm（不做封板）；上方頂天吊櫃滿寬、深 60、底部貼齊機器
 {
-  const x1 = MB.wall + cm2px(60), x2 = 557, yb = MB.north, gap = cm2px(0.4);   // 衣櫃深 60 → 本格寬約 79（設計師圖 76，差額為靠牆收邊）
+  const x1 = MB.wall + cm2px(63.6), x2 = 557, yb = MB.north, gap = cm2px(0.4);   // 衣櫃總深 63.6 → 本格寬約 75（電子衣櫥 60 寬仍放得下）
   const yF = (d) => yb + cm2px(d);
   const W = 60, D = 60, H = 185, UP = H + 1;
   const xc = (x1 + x2) / 2, xa = xc - cm2px(W / 2), xz = xc + cm2px(W / 2);
@@ -1723,6 +1958,115 @@ setBeamOption(beamOption);
   box(494, 602, 508, 614, CH - 3.2, CH - 3, fixtureMat.black);
 }
 
+// ---------- 次臥：Backbone Allround Desk 電動升降桌（130 x 70，72~116cm，羊絨米灰）----------
+// 放在北側吊櫃正下方（背靠北牆 y 486，左右置中於吊櫃 x 750~888）；桌面前段暖灰、後段米白，T 型腳
+// 點桌面（或準星對準按 E）切換坐姿 72cm / 站姿 110cm；吊櫃開放格底 173cm，站姿桌面上方仍有約 63cm
+{
+  const W = cm2px(130), D = cm2px(70), cx = (750 + 750 + cm2px(135)) / 2;
+  const x1 = cx - W / 2, x2 = cx + W / 2, yb = 486 + cm2px(1), yf = yb + D;
+  const topFront = new THREE.MeshStandardMaterial({ color: 0x9a958d, roughness: 0.75 });   // 羊絨米灰：前段暖灰
+  const topBack = new THREE.MeshStandardMaterial({ color: 0xdcd7cc, roughness: 0.75 });    // 後段米白
+  const frame = new THREE.MeshStandardMaterial({ color: 0xcfcac0, roughness: 0.5, metalness: 0.2 });
+  const black = new THREE.MeshStandardMaterial({ color: 0x1e1e1e, roughness: 0.6 });
+  const SIT = 72, STAND = 110, TH = 2.5;
+  const g = new THREE.Group(); scene.add(g);
+  const ySplit = yb + cm2px(22), o = { group: g };
+  const parts = [
+    box(x1, ySplit, x2, yf, SIT - TH, SIT, topFront, o),                                     // 桌面前段
+    box(x1, yb, x2, ySplit, SIT - TH, SIT, topBack, o),                                      // 桌面後段
+    box(x1 + cm2px(10), yb + cm2px(18), x2 - cm2px(10), yb + cm2px(24), SIT - TH - 4, SIT - TH, frame, o),   // 橫樑
+    box(x2 - cm2px(30), yf - cm2px(6), x2 - cm2px(18), yf - cm2px(1), SIT - TH - 2, SIT - TH, black, o),    // 控制面板
+  ];
+  const cy = yb + D / 2, legX = [x1 + cm2px(14), x2 - cm2px(14)];
+  legX.forEach(lx => {
+    box(lx - cm2px(4), cy - cm2px(3), lx + cm2px(4), cy + cm2px(3), 3, SIT - TH - 4, frame); // 外管（固定）
+    parts.push(box(lx - cm2px(3.4), cy - cm2px(2.4), lx + cm2px(3.4), cy + cm2px(2.4), SIT - TH - 4 - 40, SIT - TH - 4, frame, o));   // 內管（隨桌面升降）
+    box(lx - cm2px(3.5), yb + cm2px(2), lx + cm2px(3.5), yf - cm2px(2), 0, 3, frame);         // T 型腳
+    [yb + cm2px(2), yf - cm2px(5)].forEach(fy0 => box(lx - cm2px(3.5), fy0, lx + cm2px(3.5), fy0 + cm2px(3), 0, 0.8, black));   // 腳墊
+  });
+  // 桌上螢幕：Samsung Smart Monitor M7 32"（LS32BM703UCXZW，白色）；機身約 71.7 x 42.2 x 2.6cm，含底座高約 51.4、底座約 25 x 19
+  // 放在桌面後段中央、面朝南（使用者），跟著桌面升降
+  {
+    const white = new THREE.MeshStandardMaterial({ color: 0xf2f2f0, roughness: 0.4 });
+    const screen = new THREE.MeshStandardMaterial({ color: 0x0c0d10, roughness: 0.15, metalness: 0.2 });
+    const mcx = cx, my = yb + cm2px(14), MW = cm2px(71.7) / 2, z0 = SIT + 9.2;
+    parts.push(
+      box(mcx - cm2px(12.5), yb + cm2px(6), mcx + cm2px(12.5), yb + cm2px(25), SIT, SIT + 1, white, o),          // 底座
+      box(mcx - cm2px(3), my - cm2px(2.4), mcx + cm2px(3), my, SIT + 1, z0 + 12, white, o),             // 支架
+      box(mcx - MW, my, mcx + MW, my + cm2px(1.6), z0, z0 + 42.2, white, o),                                     // 機身（白色背殼）
+      box(mcx - MW + cm2px(0.6), my + cm2px(1.6), mcx + MW - cm2px(0.6), my + cm2px(1.8), z0 + 0.6, z0 + 41.6, screen, o),    // 螢幕面（窄邊框）
+    );
+  }
+  solids.push([x1, yb, x2, yf]);
+  const m = mover(g, k => { g.position.y = cm2m((STAND - SIT) * k); }, parts);
+  m.kind = 'room';
+}
+
+// ---------- 次臥：MOTTI Voanna-Plus 人體工學椅（灰色，寬 68、座高 45~52.5、總高 117~123、座寬 51）----------
+// 升降桌前、面朝北（桌子），座高取 47；網背 + 4D 頭枕 + 4D 扶手（高 66）、鋁合金五爪腳 + PU 輪
+movable(() => {   // 點擊往後（南）拉出 40cm
+  const cx = 750 + cm2px(135) / 2, cy = 486 + cm2px(1 + 70 + 22);                        // 座面中心（前緣約收入桌下 3cm）
+  // 灰色網布：canvas 畫菱形編織網孔（透光），椅背半透明可看到後方，座墊用不透光的同色網紋
+  const meshTex = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d');
+    g.clearRect(0, 0, 128, 128);
+    g.strokeStyle = '#a9abae'; g.lineWidth = 5.5;
+    for (let i = -128; i <= 256; i += 16) {                                              // 兩向斜線交織成菱形網孔
+      g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 128, 128); g.stroke();
+      g.beginPath(); g.moveTo(i, 128); g.lineTo(i + 128, 0); g.stroke();
+    }
+    g.fillStyle = 'rgba(140,142,145,.9)';                                                // 交織點略深
+    for (let y = 0; y < 128; y += 8) for (let x = (y / 8) % 2 ? 8 : 0; x < 128; x += 16) g.fillRect(x - 1.5, y - 1.5, 3, 3);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(9, 6); t.anisotropy = 4;
+    return t;
+  })();
+  const backMesh = new THREE.MeshStandardMaterial({ map: meshTex, transparent: true, alphaTest: 0.25, side: THREE.DoubleSide, roughness: 0.85 });
+  const seatTex = meshTex.clone(); seatTex.needsUpdate = true; seatTex.repeat.set(10, 10);
+  const mesh = new THREE.MeshStandardMaterial({ map: seatTex, color: 0xffffff, roughness: 0.9 });
+  mesh.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n diffuseColor.rgb = mix(vec3(0.33,0.335,0.345), diffuseColor.rgb, sampledDiffuseColor.a);'); };   // 座墊：網孔處填深灰底，不透光
+  const dark = new THREE.MeshStandardMaterial({ color: 0x4a4c50, roughness: 0.5 });
+  const aluM = new THREE.MeshStandardMaterial({ color: 0xb9bbbe, roughness: 0.35, metalness: 0.5 });
+  const SH = 47, sw = cm2px(25.5), sd = cm2px(24);
+  solids.push(Object.assign([cx - cm2px(30), cy - sd, cx + cm2px(30), cy + sd + cm2px(6)], { seat: true, top: SH }));
+  softBox(cx - sw, cy - sd, cx + sw, cy + sd, SH - 6, SH, 2.5, mesh);                    // 網布座墊
+  box(cx - cm2px(18), cy - cm2px(16), cx + cm2px(18), cy + cm2px(16), SH - 10, SH - 6, dark);   // 底盤機構
+  cyl(cx, cy, 2.6, 12, SH - 10, dark);                                                   // 氣壓棒
+  // 五爪腳：半徑 33cm，鋁合金 + 輪子
+  const P0 = new THREE.Vector3(px2m(cx - ORIGIN.x), 0, px2m(cy - ORIGIN.y));
+  for (let i = 0; i < 5; i++) {
+    const a = i * Math.PI * 2 / 5 + Math.PI / 2;
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.33, 0.035, 0.045), aluM);
+    leg.position.set(P0.x + Math.cos(a) * 0.165, 0.09, P0.z + Math.sin(a) * 0.165);
+    leg.rotation.y = -a; leg.castShadow = true; scene.add(leg);
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.025, 16).rotateZ(Math.PI / 2), dark);
+    w.position.set(P0.x + Math.cos(a) * 0.31, 0.03, P0.z + Math.sin(a) * 0.31); w.rotation.y = -a; scene.add(w);
+  }
+  cyl(cx, cy, 4, 8, 12, aluM);
+  // 椅背（南側）：灰色網背 + 深灰框，背後略後傾以分段箱體表示
+  const yb0 = cy + sd - cm2px(2);
+  box(cx - cm2px(4), yb0, cx + cm2px(4), yb0 + cm2px(6), SH - 10, SH + 8, dark);         // 背架連桿
+  [[SH + 8, SH + 33, 0], [SH + 33, SH + 58, 1.5]].forEach(([z0, z1, back]) => {
+    const o = cm2px(back);
+    box(cx - cm2px(22), yb0 + o + cm2px(1), cx + cm2px(22), yb0 + o + cm2px(1.4), z0, z1, backMesh);   // 網背（透光網布）
+    [cx - cm2px(24), cx + cm2px(22)].forEach(x => box(x, yb0 + o - cm2px(0.3), x + cm2px(2), yb0 + o + cm2px(3), z0, z1, dark));   // 側框
+  });
+  box(cx - cm2px(20), yb0 + cm2px(1.6), cx + cm2px(20), yb0 + cm2px(3.6), SH + 18, SH + 26, dark);   // 腰靠（網背後方）
+  [[SH + 8, 0], [SH + 33, 0], [SH + 58, 1.5]].forEach(([z, back]) => box(cx - cm2px(24), yb0 + cm2px(back), cx + cm2px(24), yb0 + cm2px(back + 3), z - 1.2, z + 1.2, dark));   // 網背上下框
+  box(cx - cm2px(1.5), yb0 + cm2px(3), cx + cm2px(1.5), yb0 + cm2px(5), SH + 58, SH + 64, dark); // 頭枕支桿
+  box(cx - cm2px(15), yb0 + cm2px(1), cx + cm2px(15), yb0 + cm2px(6), SH + 64, SH + 65.5, dark);   // 頭枕框
+  box(cx - cm2px(15), yb0 + cm2px(1), cx + cm2px(15), yb0 + cm2px(6), SH + 72.5, SH + 74, dark);
+  [cx - cm2px(15), cx + cm2px(13.5)].forEach(x => box(x, yb0 + cm2px(1), x + cm2px(1.5), yb0 + cm2px(6), SH + 64, SH + 74, dark));
+  box(cx - cm2px(13.5), yb0 + cm2px(3.3), cx + cm2px(13.5), yb0 + cm2px(3.7), SH + 65.5, SH + 72.5, backMesh);   // 頭枕網布（總高約 121）
+  // 4D 扶手：高 66
+  [-1, 1].forEach(sx => {
+    const ax = cx + sx * cm2px(28);
+    box(ax - cm2px(1.5), cy - cm2px(2), ax + cm2px(1.5), cy + cm2px(6), SH - 8, 64, dark);
+    softBox(ax - cm2px(4), cy - cm2px(13), ax + cm2px(4), cy + cm2px(12), 64, 66.5, 1, dark);
+  });
+}, 0, 40);
+
 // 三個房門口的走道崁燈（7.5cm、8W ≈ 720 lm）：浴室門、次臥門、走道門之間（x 567~658、y 541~625）正中
 {
   const x = 612, y = 583;
@@ -1932,6 +2276,13 @@ btnBright.onclick = (e) => {
 };
 let woodIdx = 0;
 const btnWood = document.getElementById('btnWood');
+let lampOn = true;
+const btnLamp = document.getElementById('btnLamp');
+btnLamp.onclick = (e) => {
+  e.stopPropagation();
+  lampOn = !lampOn; floorLamp(lampOn);
+  btnLamp.textContent = `立燈：${lampOn ? '開' : '關'}`; btnLamp.classList.toggle('off', !lampOn);
+};
 btnWood.onclick = (e) => {
   e.stopPropagation();
   woodIdx = (woodIdx + 1) % BEDROOM_WOODS.length;
@@ -1941,6 +2292,7 @@ btnWood.onclick = (e) => {
   if (nichePegMat) nichePegMat.color.set(w.peg);
   btnWood.textContent = `臥室櫃色：${BEDROOM_WOODS[woodIdx].name}`;
 };
+btnWood.onclick(new Event('click'));   // 預設切到「橡木」
 const btnDoors = document.getElementById('btnDoors');
 function syncDoorsBtn() {
   const any = movers.some(m => m.kind !== 'room' && m.open);
