@@ -1380,12 +1380,17 @@ let bedHeadboard, colWrap = [];
       });
     };
     const hbFace = y2, colFace = 958 - T;
-    // 以床頭板中心線（x 734.5）左右對稱；上排離地 90cm、下排一律橫式離地 30cm；西側下方那個會被床擋住（使用者同意）
+    // 以床頭板中心線（x 734.5）左右對稱；上排離地 90cm、下排離地 30cm（西側下方移到床頭板西端側面）
     const hc = (618 + 851) / 2, off = 94.5, cc = (851 + 958) / 2;
     outletV(hc + off, hbFace, 90);            // 床頭板東端上
     outletV(hc - off, hbFace, 90);            // 床頭板西端上
     outletV(hc + off, hbFace, 30);            // 東側下（床與柱之間，看得到）
-    outletV(hc - off, hbFace, 30);            // 西側下（在床後面）
+    // 西側下：原本在床後面看不到，改裝在床頭板西端側面（面朝西、窗那側），直式面板離地 30
+    {
+      const fx = 618, yc = (y2 + yWall) / 2, z = 30;
+      box(fx - e, yc - cm2px(3.5), fx, yc + cm2px(3.5), z - 6, z + 6, plate);
+      [-1, 1].forEach(sd => [-1, 1].forEach(k => box(fx - e2, yc + k * cm2px(0.6) - cm2px(0.12), fx - e, yc + k * cm2px(0.6) + cm2px(0.12), z + sd * 2.8 - 0.9, z + sd * 2.8 + 0.9, slot)));
+    }
     outletV(cc, colFace, 90);                 // 柱北面包板：上（置中）
     outletV(cc, colFace, 30);                 // 柱北面包板：下（置中）
   }
@@ -1633,6 +1638,38 @@ floorLamp(true);   // 預設開燈
     ];
     mover(g, k => { g.position.z = -px2m(cm2px(28)) * k; }, parts);
   });
+}
+
+// ---------- 主臥東北角小凹處：Dyson PencilVac Fluffycones（SV50，1160 x 226 x 38mm）+ 磁吸充電座 ----------
+// 位置：W1 窗北側、東側分隔牆轉折後的小凹處（x 923~958、y 738~780）；充電座靠北牆，機身直立在座前，吸頭朝南（朝房間）
+{
+  const cx = 940.5, cy = 738 + cm2px(8);
+  const silver = new THREE.MeshStandardMaterial({ color: 0xb9bcc0, roughness: 0.35, metalness: 0.5 });
+  const graphite = new THREE.MeshStandardMaterial({ color: 0x3a3c40, roughness: 0.5, metalness: 0.2 });
+  const cone = new THREE.MeshStandardMaterial({ color: 0xcfd0d2, roughness: 0.95 });
+  const accent = new THREE.MeshStandardMaterial({ color: 0xc9a46a, roughness: 0.35, metalness: 0.6 });
+  // 充電座：落地底板 + 細立柱（深灰），上端磁吸座
+  box(cx - cm2px(7), 738, cx + cm2px(7), 738 + cm2px(14), 0, 1.5, graphite);
+  box(cx - cm2px(2), 738, cx + cm2px(2), 738 + cm2px(2.5), 1.5, 98, graphite);
+  box(cx - cm2px(2.5), 738, cx + cm2px(2.5), 738 + cm2px(4), 92, 98, graphite);
+  // 吸頭（寬 22.6，前後各一對錐形毛刷滾筒），長邊沿 y
+  const hx = cx, hy = cy + cm2px(2);                                                   // 吸頭寬邊沿 x、朝南
+  box(hx - cm2px(11.3), hy - cm2px(5), hx + cm2px(11.3), hy + cm2px(5), 1, 5, graphite);
+  [-1, 1].forEach(side => {
+    const g = new THREE.ConeGeometry(cm2m(2), cm2m(10.5), 16); g.rotateZ(-side * Math.PI / 2);   // 錐形滾筒尖端朝中央
+    [-1, 1].forEach(fb => {
+      const m = new THREE.Mesh(g, cone);
+      m.position.set(px2m(hx + side * cm2px(5.8) - ORIGIN.x), cm2m(2.2), px2m(hy + fb * cm2px(3.2) - ORIGIN.y));
+      m.castShadow = true; scene.add(m);
+    });
+  });
+  // 鋁管 + 機身（Ø3.8 一直線），頂端握把與螢幕
+  cyl(hx, cy, 1.6, 5, 70, silver);                                                    // 鋁管
+  cyl(hx, cy, 1.9, 70, 104, silver);                                                  // 機身（馬達 / 電池）
+  cyl(hx, cy, 1.95, 84, 86, accent);                                                  // 金色飾環
+  cyl(hx, cy, 1.9, 104, 116, graphite);                                               // 握把 + 頂部螢幕
+  box(hx - cm2px(0.8), cy + cm2px(1.5), hx + cm2px(0.8), cy + cm2px(1.9), 110, 114, new THREE.MeshBasicMaterial({ color: 0x4fb3d9 }));   // 小螢幕
+  solids.push([cx - cm2px(12), 738, cx + cm2px(12), 738 + cm2px(16)]);
 }
 
 // ---------- 主臥床頭樑修飾方案（可切換比較）----------
