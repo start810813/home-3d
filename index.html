@@ -55,6 +55,7 @@
   <div>
     <button id="btnMode">切換：俯瞰模式</button>
     <button id="btnCeil">天花板：開</button>
+    <button id="btnShot">截圖</button>
     <button id="btnLabel" class="off" style="display:none">樑標籤：關</button>
     <button id="btnShowcase">櫃體：方案 1</button>
     <button id="btnKCeil">廚房天花：245 降板</button>
@@ -300,12 +301,12 @@ floorRects.forEach(r => box(...r, CEIL_H, CEIL_H + SLAB, mat.ceil, { group: ceil
 const KITCHEN_CEIL_H = CEIL_H - (90 - SLAB);
 // 客廳平釘天花：樑與樑之間（x 100~437、y 267~490，四周 B3 / G4 / J5 包樑）包完淨高 290cm（使用者提供）
 const LIV_CEIL = 290;
-// 廚房天花三案（按鈕「廚房天花」循環切換）：
-//   290 = 與客廳齊平：廚房 + 房間外走道整片包到 290，只留沿牆 G4 包樑（245）與 J5 包樑（275）
+// 廚房天花兩案（按鈕「廚房天花」切換）：
 //   270 = 依設計師 3D 圖：廚房 + 走道 270（比客廳 290 低一階），只有沿牆 G4 包成白色樑（下緣 245、到 y 290 蓋過高櫃深度），櫃頂上方由白色木作往下收
 //   245 = 整片平釘降板 245，與 G4 包樑下緣、櫃頂齊平（目前採用，預設）
-const kCeilFlat = box(437, 290, 737, 541, KITCHEN_CEIL_H, CEIL_H, mat.ceil, { group: ceilingGroup });
-const kStrip = box(437, 221 + 45 / CM_PER_PX, 737, 290, KITCHEN_CEIL_H, CEIL_H, mat.ceil, { group: ceilingGroup });   // G4 包樑外緣（切齊電器櫃）到 y 290
+const kCeilFlat = box(437, 290, 737, 537, KITCHEN_CEIL_H, CEIL_H, mat.ceil, { group: ceilingGroup });   // 南緣切齊浴室 / 次臥隔間牆南面（y 537），不穿進次臥
+const kHallLip = box(567, 537, 658, 541, KITCHEN_CEIL_H, CEIL_H, mat.ceil, { group: ceilingGroup });   // 走道口上方（無隔間牆處）補到走道天花 y 541
+const kStrip = box(437, 221 + 60 / CM_PER_PX, 737, 290, KITCHEN_CEIL_H, CEIL_H, mat.ceil, { group: ceilingGroup });   // G4 包樑外緣（距牆 60cm）到 y 290
 const KCEIL_HI = 270;
 // 客廳冷氣（B3 包樑正面 x 100、中心 y 435、寬 89cm）正上方的天花開 20cm 寬回風口：天花板挖開、裝白色鋁製線型格柵，讓冷氣從天花內吸回風
 {
@@ -339,6 +340,7 @@ const hallCeil = [box(567, 541, 658, 780, KITCHEN_CEIL_H, CEIL_H, mat.ceil, { gr
   [737, 430, 750, 486],
   [737, 472, 927, 486],
   [737, 486, 750, 527],   // J5 下方牆垛
+  [737, 527, 750, 537],   // 牆垛與隔間牆之間的缺口補平（次臥北牆轉角一條直線）
   [913, 486, 927, 505],
   [913, 657, 927, 690],
   [927, 676, 973, 690],
@@ -1217,9 +1219,9 @@ function makeLabel(text) {
 
 // r：樑本體；drop：包樑降板範圍（可多段）。G4 在電視櫃段深 45cm，從水泥紋高櫃起拉出蓋過廚具深度
 const beams = [
-  { name: 'G4 (60x90)', depth: 90, r: [23, 207, 851, 268], drop: [[23, 207, 437, fy(45)], [437, 207, 737, fy(45)], [737, 207, 851, 290]] },   // 廚房段包樑深度切齊電器櫃（fy(45)），樑外到 y 290 那條改由廚房天花（kStrip）接，跟著廚房天花高度走
+  { name: 'G4 (60x90)', depth: 90, r: [23, 207, 851, 268], drop: [[23, 207, 437, fy(45)], [437, 207, 737, fy(60)], [737, 207, 851, 290]] },   // 廚房段包樑包出 60cm（切齊廚房高櫃正面），樑外到 y 290 那條改由廚房天花（kStrip）接，跟著廚房天花高度走
   { name: 'B3 (60x90)', depth: 90, r: [23, 268, 85, 527], drop: [23, 268, 100, 527] },
-  { name: 'J5 (40x60)', depth: 60, r: [85, 500, 913, 541], drop: [23, 490, 913, 541] },
+  { name: 'J5 (40x60)', depth: 60, r: [85, 500, 913, 541], drop: [[23, 486, 658, 541], [658, 486, 913, 537]] },   // 次臥段（x 658 以東）包樑南面切齊隔間牆 y 537，不凸出 4cm；北緣到 y 486 接次臥凹處牆，不留縫
   { name: 'B5 (60x90)', depth: 90, r: [913, 268, 973, 958], drop: [903, 268, 973, 958] },
   { name: 'G2 (60x90)', depth: 90, r: [400, 1020, 851, 1080], drop: [400, 1010, 415, 1080] },   // 主臥段見「主臥床頭樑修飾方案」
   { name: 'J10 (30x60)', depth: 60, r: [385, 541, 415, 1066], drop: [385, 541, 415, 1066] },   // 樑在西牆內，不凸出室內
@@ -1254,6 +1256,8 @@ const fixtureMat = {
 const SPOT_PENUMBRA = 0.6;
 // 7.5cm 崁燈實際光束角約 60°（半照度角），每盞獨立光源：靠牆的燈會在牆上打出扇形光斑
 const DL_BEAM = 60;
+// 崁燈光圈邊緣：邊緣衰減拉滿（penumbra 1）、外緣放寬到 78°，半照度角仍約 60°，牆上光斑邊界變柔（總光通量由 coneSr 換算維持不變）
+const DL_PENUMBRA = 1, DL_OUTER = 78;
 const ROOM_LM = {};                                    // 各房間燈具總光通量（估算間接光用）
 function coneSr(angleDeg, penumbra = SPOT_PENUMBRA) {
   const a = THREE.MathUtils.degToRad(angleDeg / 2), c0 = Math.cos(a), c1 = Math.cos(a * (1 - penumbra)), N = 240;
@@ -1264,7 +1268,8 @@ function coneSr(angleDeg, penumbra = SPOT_PENUMBRA) {
 // q：畫質分級光源。'hi' = 只在「畫質：高」出現（每盞崁燈獨立 + 地板反射光）；'lo' = 只在「標準」出現（同一組崁燈合併成一顆寬角光源，省效能）
 const QUALITY_LIGHTS = [];
 function spot(from, to, { color = WARM, lm = 600, angle = 30, distance = 7, room, q } = {}) {
-  const l = new THREE.SpotLight(color, lm / coneSr(angle), distance * 1.3, THREE.MathUtils.degToRad(angle / 2), SPOT_PENUMBRA, 2);
+  const dl = angle === DL_BEAM, pen = dl ? DL_PENUMBRA : SPOT_PENUMBRA, outer = dl ? DL_OUTER : angle;
+  const l = new THREE.SpotLight(color, lm / coneSr(outer, pen), distance * 1.3, THREE.MathUtils.degToRad(outer / 2), pen, 2);
   l.userData.lm = lm;
   if (room && q !== 'lo') ROOM_LM[room] = (ROOM_LM[room] || 0) + lm;
   if (q) { l.userData.q = q; QUALITY_LIGHTS.push(l); }
@@ -1688,7 +1693,7 @@ let secondMattress, bedHeadboard, colWrap = [], bedMove, nightMove, bagMove, bed
   };
   shade(458, 618, 1066, true);                                                             // W5 主臥南窗（窗洞 x 455~618；東側收在窗洞邊，讓給床頭牆板）
   shade(740, 913, 958, false);                                                             // W1 主臥東窗（窗洞 y 740~905；北側緊鄰分隔牆，不外擴）
-  box(913 - cm2px(15), 541, 913, 770, BEAM_BOTTOM, CEIL_H, mat.beam);                       // W2 次臥東牆窗簾盒（15cm 深，整面牆）
+  box(913 - cm2px(15), 537, 913, 770, BEAM_BOTTOM, CEIL_H, mat.beam);                       // W2 次臥東牆窗簾盒（15cm 深，整面牆）
   shade(497, 665, 913, false);                                                             // W2 次臥東窗（窗洞 y 505~657）
 }
 
@@ -2438,7 +2443,8 @@ ROOM_LM.living = (ROOM_LM.living || 0) + WASH_LM + UNDERCAB_LM;
 const ROOMS = [
   { key: 'bath',    name: '浴室',     rects: [[415, 537, 557, 770]], rec: [150, 300], spill: 3 },
   { key: 'hall',    name: '走道',     rects: [[567, 537, 658, 780], [658, 635, 688, 770]], rec: [75, 150], spill: 15 },
-  { key: 'second',  name: '次臥',     rects: [[658, 486, 913, 770]], rec: [100, 300], spill: 0 },
+  // 次臥範圍：x 750 以西從隔間牆的次臥面（y 537）起算（牆北側是餐廳冰箱角落，取樣外擴 2cm 也不會吃到冰箱後牆），x 750 以東再往北到 y 486（東北角樑下凹處）
+  { key: 'second',  name: '次臥',     rects: [[658, 537, 913, 770], [750, 486, 913, 537]], rec: [100, 300], spill: 0, rho: 0.7 },   // 實景照片：四面白牆 + 白天花 + 樑全白，反射率比平均高
   { key: 'master',  name: '主臥',     rects: [[415, 780, 958, 1066]], rec: [100, 200], spill: 0 },
   { key: 'balcony', name: '後陽台',   rects: [[750, 221, 985, 472]], rec: [75, 150], spill: 8 },
   { key: 'living',  name: '客餐廳 / 廚房 / 玄關', rects: [[23, 207, 750, 541]], rec: [150, 300], spill: 0 },
@@ -2448,9 +2454,17 @@ ROOMS.forEach(r => {
   const [x1, y1, x2, y2] = r.rects[0], w = px2m(x2 - x1), d = px2m(y2 - y1), h = cm2m(CEIL_H);
   r.area = r.rects.reduce((a, [a1, b1, a2, b2]) => a + px2m(a2 - a1) * px2m(b2 - b1), 0);
   r.lm = ROOM_LM[r.key] || 0;
-  r.indirect = r.lm * RHO / ((2 * r.area + 2 * (w + d) * h) * (1 - RHO)) + r.spill;   // spill：沒有燈的空間從相鄰房間門口漏進來的光（估計值）
+  const rho = r.rho || RHO;
+  r.indirect = r.lm * rho / ((2 * r.area + 2 * (w + d) * h) * (1 - rho)) + r.spill;   // spill：沒有燈的空間從相鄰房間門口漏進來的光（估計值）
   r.avg = r.lm * UF / r.area + r.indirect;
 });
+// 走道是開放的，客餐廳的光會從開口漏進來：走道間接光至少取客餐廳的 90%，避免走道天花 / 抬高那圈側面比旁邊暗一階、交界出現明顯色階
+{
+  const hall = ROOMS.find(r => r.key === 'hall'), liv = ROOMS.find(r => r.key === 'living');
+  const boosted = Math.max(hall.indirect, liv.indirect * 0.9);
+  hall.avg += boosted - hall.indirect; hall.indirect = boosted;
+}
+
 // 地板反射光（第一次反彈）：每個房間在地面中央放朝上的寬角光源（170°），光通量 = 房間燈具 × 35%（木地板反射率約 0.4、約 85% 的光落在地面），
 // 讓天花板、牆面上半部由下往上被照亮、離燈越遠越暗，取代原本整間均一的間接光；均一間接光同步扣掉這部分（× 0.65），總亮度不變
 const BOUNCE = 0.35;
@@ -2467,7 +2481,9 @@ console.table(ROOMS.map(r => ({ 房間: r.name, '光通量 lm': Math.round(r.lm)
 {
   const rects = [], lux = [];
   ROOMS.forEach(r => r.rects.forEach(([x1, y1, x2, y2]) => {
-    rects.push(new THREE.Vector4(px2m(x1 - ORIGIN.x) - 0.02, px2m(y1 - ORIGIN.y) - 0.02, px2m(x2 - ORIGIN.x) + 0.02, px2m(y2 - ORIGIN.y) + 0.02));
+    // 不外擴 2cm：牆面取樣已沿法線往房內推 6cm；外擴太多會讓交界 2cm 內的天花 / 牆角吃到隔壁房間的光（冰箱上、主臥走道口出現細亮線）
+    const e = 0.003;                                                             // 只留 3mm 浮點誤差容許（交界線上的像素不會兩邊都落空、變成暗點）
+    rects.push(new THREE.Vector4(px2m(x1 - ORIGIN.x) - e, px2m(y1 - ORIGIN.y) - e, px2m(x2 - ORIGIN.x) + e, px2m(y2 - ORIGIN.y) + e));
     lux.push(r.indirect);
   }));
   const uniforms = { uRoomRect: { value: rects }, uRoomLux: { value: lux }, uRoomDefault: { value: 30 } };
@@ -2529,6 +2545,9 @@ const modeText = document.getElementById('modeText');
 const touchUI = document.getElementById('touchUI');
 const btnMode = document.getElementById('btnMode');
 const btnCeil = document.getElementById('btnCeil');
+// 截圖：下一幀畫完後存成 PNG（畫面本身，不含左上角面板）
+let shotPending = false;
+document.getElementById('btnShot').onclick = (e) => { e.stopPropagation(); shotPending = true; };
 const btnLabel = document.getElementById('btnLabel');
 const btnShowcase = document.getElementById('btnShowcase');
 const btnBeam = document.getElementById('btnBeam');
@@ -2587,8 +2606,8 @@ btnBeam.onclick = (e) => {
   setBeamOption((beamOption + 1) % BEAM_OPTIONS.length);
   btnBeam.textContent = `主臥樑：${BEAM_OPTIONS[beamOption]}`;
 };
-// 廚房天花三案：245 整片降板（預設）→ 290 與客廳齊平（廚房 + 房間外走道一起包到 290）→ 270 設計師 3D 圖
-const KCEIL_MODES = [KITCHEN_CEIL_H, LIV_CEIL, KCEIL_HI];
+// 廚房天花兩案：245 整片降板（預設）↔ 270 設計師 3D 圖（廚房 + 房間外走道一起抬；沿牆 G4 包樑包出 60cm、下緣 245）
+const KCEIL_MODES = [KITCHEN_CEIL_H, KCEIL_HI];
 let kCeilMode = 0;
 const slabTo = (m, z0) => {                                   // 把「z0 ~ 樓板」的天花塊改成新下緣（原本都是 245 ~ 320）
   m.scale.y = (CEIL_H - z0) / (CEIL_H - KITCHEN_CEIL_H);
@@ -2597,7 +2616,7 @@ const slabTo = (m, z0) => {                                   // 把「z0 ~ 樓�
 function setKitchenCeil(i) {
   kCeilMode = i;
   const z = KCEIL_MODES[i], dz = cm2m(z - KITCHEN_CEIL_H), hallZ = z;   // 房間外走道跟著廚房一起抬
-  slabTo(kCeilFlat, z); slabTo(kStrip, z);
+  slabTo(kCeilFlat, z); slabTo(kStrip, z); slabTo(kHallLip, z);
   hallCeil.forEach(m => slabTo(m, hallZ));
   kitchenDL.g.position.y = dz;
   [hallDL1, hallDL2].forEach(h => { h.g.position.y = cm2m(hallZ - KITCHEN_CEIL_H); });
@@ -2608,7 +2627,7 @@ function setKitchenCeil(i) {
     m.position.y = cm2m((KITCHEN_CEIL_H + top) / 2);
   });
   renderer.shadowMap.needsUpdate = true;
-  btnKCeil.textContent = `廚房天花：${['245 降板', `${LIV_CEIL} 同客廳`, `${KCEIL_HI} 設計師`][i]}`;
+  btnKCeil.textContent = `廚房天花：${['245 降板', `${KCEIL_HI} 設計師`][i]}`;
 }
 const btnKCeil = document.getElementById('btnKCeil');
 btnKCeil.onclick = (e) => { e.stopPropagation(); setKitchenCeil((kCeilMode + 1) % KCEIL_MODES.length); };
@@ -2945,6 +2964,17 @@ function tick() {
   if (orbit.enabled) orbit.update();
   syncSelfLit();
   if (aoOn) composer.render(); else renderer.render(scene, camera);
+  if (shotPending) {                                                     // 截圖：剛畫完這一幀就讀畫布（不用開 preserveDrawingBuffer）
+    shotPending = false;
+    renderer.domElement.toBlob(b => {
+      const d = new Date(), p = n => String(n).padStart(2, '0');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = `A10-4F-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.png`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }, 'image/png');
+  }
   requestAnimationFrame(tick);
 }
 

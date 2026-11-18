@@ -55,6 +55,7 @@
   <div>
     <button id="btnMode">切換：俯瞰模式</button>
     <button id="btnCeil">天花板：開</button>
+    <button id="btnShot">截圖</button>
     <button id="btnDoors" class="off">櫃門：全關</button>
     <button id="btnBright">曝光：標準</button>
     <button id="btnFire">消防管線：開</button>
@@ -1428,6 +1429,9 @@ const modeText = document.getElementById('modeText');
 const touchUI = document.getElementById('touchUI');
 const btnMode = document.getElementById('btnMode');
 const btnCeil = document.getElementById('btnCeil');
+// 截圖：下一幀畫完後存成 PNG（畫面本身，不含左上角面板）
+let shotPending = false;
+document.getElementById('btnShot').onclick = (e) => { e.stopPropagation(); shotPending = true; };
 
 function updateUI() {
   touchUI.classList.toggle('on', IS_TOUCH);
@@ -1698,6 +1702,17 @@ function tick() {
   }
   if (orbit.enabled) orbit.update();
   renderer.render(scene, camera);
+  if (shotPending) {                                                     // 截圖：剛畫完這一幀就讀畫布（不用開 preserveDrawingBuffer）
+    shotPending = false;
+    renderer.domElement.toBlob(b => {
+      const d = new Date(), p = n => String(n).padStart(2, '0');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b);
+      a.download = `B8-24F-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.png`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }, 'image/png');
+  }
   requestAnimationFrame(tick);
 }
 
