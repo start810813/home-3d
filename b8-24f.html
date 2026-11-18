@@ -439,7 +439,7 @@ function panelMesh(x1, y1, x2, y2, z0, z1, material, parent, o) {
   return m;
 }
 // 鉸鍊門：門片矩形的長邊為門寬，hinge = 鉸鍊在門寬方向的 'min' / 'max' 端；out = 櫃外方向（厚度軸的 +1 / -1）
-function hingeDoor(x1, y1, x2, y2, z0, z1, material, { hinge = 'min', out = 1, angle = 100, group = scene } = {}) {
+function hingeDoor(x1, y1, x2, y2, z0, z1, material, { hinge = 'min', out = 1, angle = 85, group = scene } = {}) {
   const alongX = Math.abs(x2 - x1) > Math.abs(y2 - y1);
   const h = alongX ? (hinge === 'min' ? Math.min(x1, x2) : Math.max(x1, x2)) : (hinge === 'min' ? Math.min(y1, y2) : Math.max(y1, y2));
   const o = alongX ? [h, (y1 + y2) / 2, z0] : [(x1 + x2) / 2, h, z0];
@@ -503,6 +503,81 @@ function cyl(cx, cy, rCm, z0, z1, material, group = scene) {
 }
 
 // 圓角方塊：x1~x2、y1~y2（平面 px）、z0~z1（cm），半徑 rCm
+// 全嵌式洗碗機（BOSCH SMV4HAX00X：60 寬 / 81.5 高 / 55 深，13 人份）：外觀是跟旁邊一樣的櫃門片，門往下翻開 → 不鏽鋼內膽、下籃 / 上籃、餐具籃、噴臂，門頂緣有隱藏式操作面板
+// 本地座標（cm）：u = 沿門寬（0~60），v = 從櫃體前緣往內，z = 高度。(x, y) = 櫃體前緣、u = 0 那一角的平面座標，rotY = 本地 u 軸轉到世界的角度
+function dishwasher(x, y, rotY, panel, { depth = 58 } = {}) {
+  const root = new THREE.Group();
+  root.position.set(px2m(x - ORIGIN.x), 0, px2m(y - ORIGIN.y));
+  root.rotation.y = rotY;
+  scene.add(root);
+  const steel = new THREE.MeshStandardMaterial({ color: 0xc6cacd, roughness: 0.32, metalness: 0.55 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x2e3135, roughness: 0.45 });
+  const L = (u1, u2, v1, v2, z0, z1, m, parent = root, p = [0, 0, 0]) => {
+    const g = new THREE.Mesh(new THREE.BoxGeometry(cm2m(u2 - u1), cm2m(z1 - z0), cm2m(v2 - v1)), m);
+    g.position.set(cm2m((u1 + u2) / 2 - p[0]), cm2m((z0 + z1) / 2 - p[1]), -cm2m((v1 + v2) / 2 - p[2]));
+    g.castShadow = g.receiveShadow = true;
+    parent.add(g);
+    return g;
+  };
+  // 鐵線籃：透明貼圖格網（alphaTest），不投影
+  const wireTex = (cols, rows) => {
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const g = c.getContext('2d'); g.strokeStyle = '#d4d7db'; g.lineWidth = 5;
+    for (let i = 0; i <= cols; i++) { const p = 2.5 + i * 251 / cols; g.beginPath(); g.moveTo(p, 0); g.lineTo(p, 256); g.stroke(); }
+    for (let i = 0; i <= rows; i++) { const p = 2.5 + i * 251 / rows; g.beginPath(); g.moveTo(0, p); g.lineTo(256, p); g.stroke(); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    return new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.5 });
+  };
+  const W = (u1, u2, v1, v2, z0, z1, cell = 3, tines = false) => {      // 一片鐵網（u / v / z 其中一軸為 0 厚）
+    const du = u2 - u1, dv = v2 - v1, dz = z1 - z0;
+    let a, b, geo, m;
+    if (dz === 0) { a = du; b = dv; geo = new THREE.PlaneGeometry(cm2m(du), cm2m(dv)); geo.rotateX(-Math.PI / 2); }
+    else if (dv === 0) { a = du; b = dz; geo = new THREE.PlaneGeometry(cm2m(du), cm2m(dz)); }
+    else { a = dv; b = dz; geo = new THREE.PlaneGeometry(cm2m(dv), cm2m(dz)); geo.rotateY(Math.PI / 2); }
+    m = new THREE.Mesh(geo, wireTex(Math.max(1, Math.round(a / cell)), tines ? 1 : Math.max(1, Math.round(b / cell))));
+    m.position.set(cm2m((u1 + u2) / 2), cm2m((z0 + z1) / 2), -cm2m((v1 + v2) / 2));
+    m.receiveShadow = true;
+    root.add(m);
+  };
+  const rack = (z0, h, tineRows) => {
+    const u1 = 4, u2 = 56, v1 = 8, v2 = 52;
+    W(u1, u2, v1, v2, z0, z0); W(u1, u2, v1, v1, z0, z0 + h); W(u1, u2, v2, v2, z0, z0 + h);
+    W(u1, u1, v1, v2, z0, z0 + h); W(u2, u2, v1, v2, z0, z0 + h);
+    tineRows.forEach(u => W(u, u, v1 + 2, v2 - 2, z0, z0 + h + 4, 2.5, true));       // 盤架插針
+    [v1 + 3, v2 - 3].forEach(v => [u1, u2].forEach(u => {                          // 滾輪
+      const w = new THREE.Mesh(new THREE.CylinderGeometry(cm2m(1.8), cm2m(1.8), cm2m(1), 16), dark);
+      w.rotation.z = Math.PI / 2; w.position.set(cm2m(u + (u === u1 ? -0.6 : 0.6)), cm2m(z0 + 0.5), -cm2m(v)); root.add(w);
+    }));
+  };
+  // 內膽（固定）：底 / 背 / 側 / 頂
+  L(1.5, 58.5, 5, 55, 8, 11, steel); L(1.5, 58.5, 54, 55, 8, 81.5, steel);
+  L(1.5, 2.5, 5, 55, 8, 81.5, steel); L(57.5, 58.5, 5, 55, 8, 81.5, steel);
+  L(1.5, 58.5, 5, 55, 80.5, 81.5, steel);
+  { const f = new THREE.Mesh(new THREE.CylinderGeometry(cm2m(4), cm2m(4), cm2m(0.6), 24), dark); f.position.set(cm2m(30), cm2m(11.3), -cm2m(30)); root.add(f); }   // 濾網
+  L(8, 52, 28, 32, 12.5, 13.5, dark);                                                         // 下噴臂
+  L(12, 48, 28, 32, 46, 47, dark);                                                            // 上噴臂
+  L(28.5, 31.5, 50, 54, 13.5, 46, dark);                                                      // 給水管
+  rack(15, 14, [12, 18, 24, 30]);                                                             // 下籃（盤架）
+  rack(48, 11, [32, 44]);                                                                     // 上籃（杯架）
+  W(42, 54, 10, 10, 15.5, 31); W(42, 54, 26, 26, 15.5, 31); W(42, 42, 10, 26, 15.5, 31); W(54, 54, 10, 26, 15.5, 31);   // 餐具籃
+  [16, 21].forEach(v => W(42, 54, v, v, 15.5, 29, 4, true));
+  // 門：櫃門片（同旁邊門板）+ 不鏽鋼內門 + 頂緣操作面板，鉸鍊在下緣、往外放倒 88°
+  const o = [30, 8.2, -2], pv = new THREE.Group();
+  pv.position.set(cm2m(o[0]), cm2m(o[1]), -cm2m(o[2]));
+  root.add(pv);
+  const P = (u1, u2, v1, v2, z0, z1, m) => L(u1, u2, v1, v2, z0, z1, m, pv, o);
+  const meshes = [
+    P(0.25, 59.75, -2, 0, 8.2, 84.8, panel),
+    P(1.5, 58.5, 0, 4.6, 9, 81, steel),                                                         // 內門
+    P(1.5, 58.5, 0, 4.6, 81, 82.2, dark),                                                       // 操作面板（關門時藏在門頂）
+    P(34, 46, 4.6, 5.2, 52, 61, new THREE.MeshStandardMaterial({ color: 0xe9eaec, roughness: 0.4 })),   // 洗劑盒
+  ];
+  const btn = new THREE.MeshStandardMaterial({ color: 0xbfc3c8, roughness: 0.3, metalness: 0.4 });
+  [10, 16, 22, 28, 40, 46, 52].forEach(u => meshes.push(P(u - 1.6, u + 1.6, 1.2, 3.2, 82.2, 82.4, btn)));
+  meshes.push(P(31, 37, 1, 3.4, 82.2, 82.35, new THREE.MeshStandardMaterial({ color: 0x0a0a0c, emissive: 0x3aa0ff, emissiveIntensity: 0.25, roughness: 0.1 })));   // 顯示窗
+  const max = THREE.MathUtils.degToRad(88);
+  return mover(pv, k => { pv.rotation.x = max * k; }, meshes, [x, y, 8.2]);
+}
 function softBox(x1, y1, x2, y2, z0, z1, rCm, material, { collide = false } = {}) {
   const w = px2m(x2 - x1), d = px2m(y2 - y1), h = cm2m(z1 - z0);
   const m = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 3, Math.min(cm2m(rCm), w / 2, h / 2, d / 2)), material);
@@ -583,7 +658,7 @@ function spot(from, to, { color = WARM, lm = 600, angle = 30, distance = 7, room
 }
 
 // ---------- 廚房（依現場照片；總長 295 x 深 60，沿東牆）----------
-// 由北而南：高櫃 60（下門 / 內嵌微波爐 / 上掀門 / 上門）→ 下櫃：水槽兩門 50+50 → 單門 60 → 三抽 75（上方爐台）
+// 由北而南：高櫃 60（下門 / 內嵌微波爐 / 上掀門 / 上門）→ 下櫃：水槽兩門 50+50 → 全嵌洗碗機 60 → 三抽 75（上方爐台）
 // 上櫃深 35、150~235：左段 80（下半橡木開放格 150~185、上半白門）→ 右段 60（白門）→ 排油煙機區 95（隱藏式抽拉排油煙機 + 白色風管罩）
 // 門板、踢腳、檯面白色；吊櫃下緣 LED 燈條
 {
@@ -594,34 +669,79 @@ function spot(from, to, { color = WARM, lm = 600, angle = 30, distance = 7, room
   const front = (ya, yb, z0, z1, x = xf, m = cab.white) => box(x - T, ya + G, x, yb - G, z0 + 0.2, z1 - 0.2, m);
   solids.push([K.x1 - T, K.y1, K.x2, K.y2]);
   // 1. 高櫃（0~60）
-  box(K.x1, Y(0), K.x2, Y(60), 0, TOP, cab.white);
+  // 高櫃：下門（內 1 層隔板）、上門（內 2 層隔板）可開；微波爐段與上掀門維持實心
+  carcass(K.x1, Y(0), K.x2, Y(60), 8, 74, cab.white, { face: 'x-', inner: cab.white, shelves: [40] });
+  box(K.x1, Y(0), K.x2, Y(60), 74, 135, cab.white);
+  carcass(K.x1, Y(0), K.x2, Y(60), 135, TOP, cab.white, { face: 'x-', inner: cab.white, shelves: [168, 201] });
   box(xf - T, Y(0), xf, Y(60), 0, 8, cab.white);
-  front(Y(0), Y(60), 8, 74);                                                                // 下門
+  hingeDoor(xf - T, Y(0) + G, xf, Y(60) - G, 8.2, 73.8, cab.white, { hinge: 'min', out: -1 });   // 下門
   front(Y(0), Y(60), 74, 78);                                                               // 微波爐下飾板
   box(xf - T - cm2px(0.4), Y(2), xf, Y(58), 78, 118, glassBlack);                           // 內嵌微波爐（黑玻璃面）
   box(xf - T - cm2px(0.5), Y(8), xf - T - cm2px(0.4), Y(40), 84, 112, new THREE.MeshStandardMaterial({ color: 0x23272b, roughness: 0.05 }));   // 視窗
   box(xf - T - cm2px(0.6), Y(2), xf - T - cm2px(0.4), Y(58), 78, 79.5, cab.steel);          // 不鏽鋼飾條
   box(xf - T - cm2px(0.6), Y(2), xf - T - cm2px(0.4), Y(58), 116.5, 118, cab.steel);
   front(Y(0), Y(60), 118, 135);                                                             // 上掀門
-  front(Y(0), Y(60), 135, TOP);                                                             // 上門
+  hingeDoor(xf - T, Y(0) + G, xf, Y(60) - G, 135.2, TOP - 0.2, cab.white, { hinge: 'min', out: -1 });   // 上門
   // 2. 下櫃（60~295）+ 檯面
   box(K.x1 + cm2px(3), Y(60), K.x2, K.y2, 0, 8, cab.white);                                 // 內縮踢腳
-  box(K.x1, Y(60), K.x2, K.y2, 8, 85, cab.white);
-  front(Y(60), Y(110), 8, 85); front(Y(110), Y(160), 8, 85); front(Y(160), Y(220), 8, 85);  // 水槽兩門、單門
-  [[69, 85], [50, 69], [8, 50]].forEach(([z0, z1]) => drawer(xf - T, Y(220) + G, xf, Y(295) - G, z0 + 0.2, z1 - 0.2, cab.white, { out: -1, depth: 52, travel: 40 }));   // 三抽
-  box(K.x1 - cm2px(1.5), Y(60), K.x2, K.y2, 85, 89, counterMat);                            // 檯面
-  // 水槽（下嵌式，靠高櫃）+ 龍頭
-  box(K.x1 + cm2px(7), Y(66), K.x2 - cm2px(10), Y(108), 88.9, 89.05, new THREE.MeshStandardMaterial({ color: 0xa3a8ac, roughness: 0.3 }));
-  cyl(K.x2 - cm2px(6), Y(70), 1.4, 89, 116, cab.steel);
-  box(K.x2 - cm2px(22), Y(70) - cm2px(1), K.x2 - cm2px(6), Y(70) + cm2px(1), 113, 116, cab.steel);
+  // 下櫃櫃體（白色內裝）：水槽兩門（不放隔板，留給水管）→ 單門（中間 1 層活動隔板，依現場照片）→ 三抽（深灰鋼抽，第一層附餐具分隔盤）
+  carcass(K.x1, Y(60), K.x2, K.y2, 8, 85, cab.white, { face: 'x-', inner: cab.white, dividers: [Y(160), Y(220)] });
+  box(K.x1, Y(110) - cm2px(2), K.x1 + cm2px(5), Y(110) + cm2px(2), 8, 85, cab.white);              // 水槽櫃中間門檔立柱（只在前緣，裡面打通）
+  hingeDoor(xf - T, Y(60) + G, xf, Y(110) - G, 8.2, 84.8, cab.white, { hinge: 'min', out: -1 });
+  hingeDoor(xf - T, Y(110) + G, xf, Y(160) - G, 8.2, 84.8, cab.white, { hinge: 'max', out: -1 });
+  dishwasher(xf, Y(160), -Math.PI / 2, cab.white, { depth: 60 });                         // 單門位置改為全嵌式洗碗機（BOSCH SMV4HAX00X），門片同櫃門
+  const drawerGrey = new THREE.MeshStandardMaterial({ color: 0x5d6066, roughness: 0.55, metalness: 0.3 });
+  [[69, 85], [50, 69], [8, 50]].forEach(([z0, z1], i) => {
+    const dm = drawer(xf - T, Y(220) + G, xf, Y(295) - G, z0 + 0.2, z1 - 0.2, cab.white, { out: -1, depth: 52, travel: 40, tray: drawerGrey });
+    if (i === 0) {                                                                            // 餐具分隔盤：深灰塑膠，長格 + 中間小格
+      const tray = new THREE.MeshStandardMaterial({ color: 0x4a4d53, roughness: 0.6 });
+      const xa = xf + cm2px(2), xb = xf + cm2px(50), ya = Y(221), yb = Y(294), zb = z0 + 1.4, zt = zb + 4.5, w = cm2px(0.6);
+      const add = (a, b, c, d, z1 = zt) => panelMesh(a, b, c, d, zb, z1, tray, dm.pivot, dm.origin).userData.mover = dm;
+      add(xa, ya, xb, yb, zb + 0.4);                                                          // 底盤
+      [0.2, 0.37, 0.63, 0.8].forEach(f => { const yy = ya + (yb - ya) * f; add(xa, yy - w / 2, xb, yy + w / 2); });   // 長向隔條
+      [0.45].forEach(f => { const xx = xa + (xb - xa) * f; add(xx - w / 2, ya + (yb - ya) * 0.37, xx + w / 2, ya + (yb - ya) * 0.63); });   // 中段橫向隔條
+      add(xa, ya, xb, ya + w); add(xa, yb - w, xb, yb); add(xa, ya, xa + w, yb); add(xb - w, ya, xb, yb);   // 外框
+    }
+  });
+  // 檯面（挖水槽開口）+ 下嵌式大單槽（佔滿水槽櫃寬：約 84 x 43 x 深 20cm，置中於水槽兩門 Y 60~160）+ 龍頭置中於水槽後方
+  const sx1 = K.x1 + cm2px(7), sx2 = K.x2 - cm2px(10), sy1 = Y(68), sy2 = Y(152), sc = (sy1 + sy2) / 2, SB = 69;
+  box(K.x1 - cm2px(1.5), Y(60), K.x2, sy1, 85, 89, counterMat);
+  box(K.x1 - cm2px(1.5), sy2, K.x2, K.y2, 85, 89, counterMat);
+  box(K.x1 - cm2px(1.5), sy1, sx1, sy2, 85, 89, counterMat);
+  box(sx2, sy1, K.x2, sy2, 85, 89, counterMat);
+  {
+    const sink = new THREE.MeshStandardMaterial({ color: 0xb4b8bc, roughness: 0.35, metalness: 0.6 }), w = cm2px(0.8);
+    box(sx1, sy1, sx2, sy2, SB, SB + 0.8, sink);                                            // 槽底
+    box(sx1, sy1, sx1 + w, sy2, SB, 89, sink); box(sx2 - w, sy1, sx2, sy2, SB, 89, sink);   // 槽壁
+    box(sx1, sy1, sx2, sy1 + w, SB, 89, sink); box(sx1, sy2 - w, sx2, sy2, SB, 89, sink);
+    cyl((sx1 + sx2) / 2, sc, 4.5, SB + 0.8, SB + 1, cab.steel);                              // 排水口
+    // 槽下：排水管（不鏽鋼提籠 → 存水彎接到牆）、進水軟管
+    cyl((sx1 + sx2) / 2, sc, 3.8, SB - 12, SB, cab.steel);
+    cyl((sx1 + sx2) / 2, sc, 2, 22, SB - 12, new THREE.MeshStandardMaterial({ color: 0xd8dadc, roughness: 0.5 }));
+    box((sx1 + sx2) / 2, sc - cm2px(2), K.x2 - cm2px(1), sc + cm2px(2), 22, 26, new THREE.MeshStandardMaterial({ color: 0xd8dadc, roughness: 0.5 }));
+    cyl(K.x2 - cm2px(8), sc + cm2px(12), 0.8, 40, SB, new THREE.MeshStandardMaterial({ color: 0x9a9da1, roughness: 0.5 }));
+    // 背牆：插座 x2（淨水器 / 廚下設備用）
+    [62, 44].forEach(z => box(K.x2 - cm2px(1.8) - cm2px(0.4), sc + cm2px(18), K.x2 - cm2px(1.8), sc + cm2px(28), z - 3.5, z + 3.5, new THREE.MeshStandardMaterial({ color: 0xf2f2f0, roughness: 0.4 })));
+    // 底部防水接水墊（深灰）
+    box(K.x1 + cm2px(2), Y(61), K.x2 - cm2px(2), Y(159), 9.8, 11, new THREE.MeshStandardMaterial({ color: 0x4f5257, roughness: 0.7 }));
+  }
+  cyl(K.x2 - cm2px(6), sc, 1.4, 89, 116, cab.steel);                                       // 龍頭（置中）
+  box(K.x2 - cm2px(24), sc - cm2px(1), K.x2 - cm2px(6), sc + cm2px(1), 113, 116, cab.steel);
   // 爐台（三抽上方）：雙口嵌入式
   const cc = (Y(220) + Y(295)) / 2;
   box(K.x1 + cm2px(7), cc - cm2px(35), K.x2 - cm2px(7), cc + cm2px(35), 89, 89.6, cab.black);
   [-1, 1].forEach(sd => cyl((K.x1 + K.x2) / 2, cc + sd * cm2px(17), 9, 89.6, 89.8, new THREE.MeshStandardMaterial({ color: 0x3a3b3e, roughness: 0.4 })));
   // 3. 上櫃
   carcass(xu, Y(60), K.x2, Y(140), 150, 185, cab.oakGrain, { face: 'x-', inner: cab.oakGrain });   // 左段下半：橡木開放格
-  box(xu, Y(60), K.x2, Y(140), 185, TOP, cab.white); front(Y(60), Y(140), 185, TOP, xu);          // 左段上半：白門
-  box(xu, Y(140), K.x2, Y(200), 150, TOP, cab.white); front(Y(140), Y(200), 150, TOP, xu);        // 右段：白門
+  // 左段上半：上掀門（氣壓撐桿，往上掀 80°），內部淨空
+  carcass(xu, Y(60), K.x2, Y(140), 185, TOP, cab.white, { face: 'x-', inner: cab.white });
+  {
+    const o = [xu, (Y(60) + Y(140)) / 2, TOP], g = pivotAt(...o), max = THREE.MathUtils.degToRad(80);
+    mover(g, k => { g.rotation.z = -max * k; }, [panelMesh(xu - T, Y(60) + G, xu, Y(140) - G, 185.2, TOP - 0.2, cab.white, g, o)], o);
+  }
+  // 右段：單門吊櫃，內 2 層活動隔板（依現場照片）
+  carcass(xu, Y(140), K.x2, Y(200), 150, TOP, cab.white, { face: 'x-', inner: cab.white, shelves: [178, 206] });
+  hingeDoor(xu - T, Y(140) + G, xu, Y(200) - G, 150.2, TOP - 0.2, cab.white, { hinge: 'min', out: -1 });
   // 排油煙機區（200~295）：隱藏式抽拉排油煙機（黑玻璃前緣）+ 白色風管罩
   box(xu - cm2px(2), Y(203), K.x2, Y(293), 150, 154, cab.steel);
   box(xu - cm2px(2.5), Y(203), xu - cm2px(1.5), Y(293), 148, 154, glassBlack);
@@ -746,7 +866,7 @@ function spot(from, to, { color = WARM, lm = 600, angle = 30, distance = 7, room
   box(83, B.y1 + t + cm2px(2), 91, B.y1 + t + cm2px(11), 192, 196, chrome);                   // 蓮蓬頭
   box(48, 46, 124, 52, 1.3, 1.7, cab.white);                                                  // 線型排水：靠北牆（淋浴龍頭那面），離牆約 4cm
 
-  // 洗手台（CAD：西牆，寬 60 x 深 50，y 167~227）：壁掛浴櫃 + 檯面盆 + 無框鏡
+  // 洗手台（CAD：西牆，寬 60 x 深 50，y 167~227）：壁掛浴櫃 + 檯面盆 + 鏡櫃（厚 10cm）
   {
     const y1 = 168, y2 = 226, xb = B.x1 + t, xf = xb + cm2px(47), T = cm2px(1.8), ym = (y1 + y2) / 2;
     solids.push([B.x1, y1, xf + T, y2]);
@@ -758,24 +878,63 @@ function spot(from, to, { color = WARM, lm = 600, angle = 30, distance = 7, room
     box(xb + cm2px(14), y1 + cm2px(8), xf - cm2px(2), y2 - cm2px(8), 92.9, 93.15, new THREE.MeshStandardMaterial({ color: 0xd9dde0, roughness: 0.1 }));
     cyl(xb + cm2px(9), ym, 1.8, 93, 107, chrome);
     box(xb + cm2px(9), ym - cm2px(1.2), xb + cm2px(20), ym + cm2px(1.2), 103, 105.5, chrome);
-    box(xb, y1, xb + cm2px(0.5), y2, 112, 190, mirrorMat);
+    // 鏡櫃：寬 58 x 高 78 x 厚 10cm（櫃體 8.2 + 鏡門 1.8），白色櫃體、內 2 層層板，單片鏡門（鉸鍊在北側，最多開 85°）
+    const xm = xb + cm2px(8.2);
+    carcass(xb, y1, xm, y2, 112, 190, cab.white, { face: 'x+', inner: cab.white, shelves: [138, 164] });
+    hingeDoor(xm, y1 + cm2px(0.2), xm + T, y2 - cm2px(0.2), 112.2, 189.8, mirrorMat, { hinge: 'min', out: 1, angle: 85 });
   }
 
-  // 馬桶（CAD：背靠東牆、朝西，中心 y 115）
+  // 馬桶：TOTO G5 一體形全自動馬桶 CES75110ATW（W 38.6 x D 72 x H 51.8，便座高 38）；CAD：背靠東牆、朝西，中心 y 115
+  //   以「朝 +x」的本地座標建模（同 A10-4F），整組轉 180° 放到東牆
   {
-    const yc = 115.1, hw = cm2px(19), xb = B.x2 - t;
-    solids.push(Object.assign([xb - cm2px(72), yc - hw, B.x2, yc + hw], { seat: true, top: 44 }));
-    softBox(xb - cm2px(30), yc - hw, xb, yc + hw, 0, 54, 5, ceramic);
-    softBox(xb - cm2px(72), yc - hw, xb - cm2px(22), yc + hw, 0, 40, 9, ceramic);
-    const bowl = cyl(xb - cm2px(47), yc, 12, 40, 40.2, new THREE.MeshStandardMaterial({ color: 0x5f6a70, roughness: 0.1 }));   // 便座開口（掀蓋後看得到）
-    bowl.scale.x = 1.35;
-    // 馬桶蓋：鉸鍊在水箱側（x = xb - 24cm、離地 42），往上掀 95°；點一下也能手動開關
-    const lidMesh = softBox(xb - cm2px(71), yc - hw + cm2px(0.5), xb - cm2px(24), yc + hw - cm2px(0.5), 40, 44, 2, ceramic);
-    const o = [xb - cm2px(24), yc, 42], g = pivotAt(...o);
-    g.updateMatrixWorld();
-    g.attach(lidMesh);
-    const max = THREE.MathUtils.degToRad(95);
-    const lid = mover(g, k => { g.rotation.z = -max * k; }, [lidMesh], o);
+    const yc = 115.1, hw = cm2px(19.3), xb = B.x2 - t;
+    solids.push(Object.assign([xb - cm2px(72), yc - hw, B.x2, yc + hw], { seat: true, top: 42 }));
+    const tg = new THREE.Group(); tg.position.set(px2m(xb - ORIGIN.x), 0, px2m(yc - ORIGIN.y)); tg.rotation.y = Math.PI; scene.add(tg);
+    const W2 = cm2m(19.3);
+    const plan = (L, w, straight) => {
+      const sh = new THREE.Shape();
+      sh.moveTo(0, -w); sh.lineTo(straight, -w);
+      sh.absellipse(straight, 0, L - straight, w, -Math.PI / 2, Math.PI / 2, false);
+      sh.lineTo(0, w); sh.closePath();
+      return sh;
+    };
+    const solid = (shape, h, bevel = 0.01) => {
+      const g = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 4, curveSegments: 40 });
+      g.rotateX(-Math.PI / 2);
+      return g;
+    };
+    const add = (m, x, y) => { m.position.set(x, y, 0); m.castShadow = m.receiveShadow = true; tg.add(m); return m; };
+    {                                                                                       // 座體（裙邊，上寬下窄）
+      const H = cm2m(37), g = solid(plan(cm2m(70), W2 - 0.01, cm2m(30)), H, 0.012);
+      const p = g.attributes.position, v = new THREE.Vector3();
+      for (let i = 0; i < p.count; i++) {
+        v.fromBufferAttribute(p, i);
+        const k = 1 - THREE.MathUtils.clamp(v.y / H, 0, 1);
+        p.setXYZ(i, v.x * (1 - 0.2 * k * k), v.y, v.z * (1 - 0.14 * k));
+      }
+      g.computeVertexNormals();
+      add(new THREE.Mesh(g, ceramic), 0.012, 0);
+    }
+    {                                                                                       // 後段機能部（頂 51.8，前緣斜切）
+      const sh = new THREE.Shape();
+      sh.moveTo(0, 0); sh.lineTo(cm2m(27), 0); sh.quadraticCurveTo(cm2m(24), cm2m(9), cm2m(17), cm2m(14.8)); sh.lineTo(0, cm2m(14.8)); sh.closePath();
+      const g = new THREE.ExtrudeGeometry(sh, { depth: cm2m(36), bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012, bevelSegments: 4, curveSegments: 16 });
+      g.translate(0, 0, -cm2m(18));
+      add(new THREE.Mesh(g, ceramic), 0.012, cm2m(37));
+    }
+    const bowlGeo = new THREE.ShapeGeometry(plan(cm2m(27), cm2m(13), cm2m(8)), 32); bowlGeo.rotateX(-Math.PI / 2);
+    add(new THREE.Mesh(bowlGeo, new THREE.MeshStandardMaterial({ color: 0x5f6a70, roughness: 0.1 })), cm2m(37), cm2m(38.05));
+    const ringShape = plan(cm2m(46), W2 - 0.015, cm2m(14));
+    { const hole = new THREE.Path(), a = cm2m(13), L = cm2m(27), w = cm2m(13), st = cm2m(8);
+      hole.moveTo(a, -w); hole.lineTo(a + st, -w); hole.absellipse(a + st, 0, L - st, w, -Math.PI / 2, Math.PI / 2, false); hole.lineTo(a, w); hole.closePath();
+      ringShape.holes.push(hole); }
+    add(new THREE.Mesh(solid(ringShape, cm2m(1), 0.004), ceramic), cm2m(24), cm2m(37.2));
+    // 便蓋：鉸鍊在機能部前緣（本地 x 24cm、離地 40），往上掀 100°；走進浴室自動打開，6 秒後自動蓋上；點一下也能手動開關
+    const g = new THREE.Group(); g.position.set(cm2m(24), cm2m(40), 0); tg.add(g);
+    const lidMesh = new THREE.Mesh(solid(plan(cm2m(47), W2 - 0.012, cm2m(16)), cm2m(1.6), 0.008), ceramic);
+    lidMesh.position.set(0, -cm2m(1.2), 0); lidMesh.castShadow = true; g.add(lidMesh);
+    const max = THREE.MathUtils.degToRad(100);
+    const lid = mover(g, k => { g.rotation.z = max * k; }, [lidMesh]);
     lid.kind = 'room';                                                  // 不受「櫃門：全開 / 全關」影響
     g.userData.mover = lid;
     // 自動掀蓋：人（漫遊視角）一走進浴室就打開，6 秒後自動蓋上；離開浴室再進來才會再觸發
@@ -1336,8 +1495,11 @@ function pick(ndc, far) {
   ray.far = far;
   for (const h of ray.intersectObjects(scene.children, true)) {
     const o = h.object;
-    if (!o.isMesh || !shown(o) || o.material.transparent) continue;
-    for (let q = o; q; q = q.parent) if (q.userData.mover) return q.userData.mover;
+    if (!o.isMesh || !shown(o)) continue;
+    let mv = null;
+    for (let q = o; q; q = q.parent) if (q.userData.mover) { mv = q.userData.mover; break; }
+    if (mv) return mv;                                                                  // 可動件（含玻璃門片）直接命中
+    if (o.material.transparent) continue;                                               // 一般透明物（固定玻璃）點不到，穿過去
     return null;
   }
   return null;
