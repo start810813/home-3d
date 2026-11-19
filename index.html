@@ -23,6 +23,8 @@
     position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
     color: #fff; font-size: 18px; pointer-events: none; text-shadow: 0 0 6px #000;
   }
+  #rulerHud { position: fixed; left: 50%; top: calc(50% + 22px); transform: translateX(-50%); padding: 6px 12px; border-radius: 8px; background: rgba(20,20,22,.75); color: #ffd24a; font: 600 15px/1.45 system-ui, sans-serif; text-align: center; display: none; pointer-events: none; white-space: nowrap; z-index: 20; }
+  #rulerHud span { color: #e8e2d6; font-weight: 400; font-size: 13px; } #rulerHud small { color: #aaa; font-weight: 400; }
   #cross { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: rgba(255,255,255,.7); display: none; }
   /* ---------- 手機 / 平板觸控 ---------- */
   /* 畫布固定鋪滿整個螢幕（含 iPhone 瀏海 / 手勢條區域），避免橫向時出現黑邊 */
@@ -33,7 +35,8 @@
   #joyBase { position: fixed; left: calc(22px + env(safe-area-inset-left)); bottom: calc(22px + env(safe-area-inset-bottom)); width: 124px; height: 124px; border-radius: 50%;
     background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.35); touch-action: none; z-index: 20; }
   #joyStick { position: absolute; left: 37px; top: 37px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,.6); pointer-events: none; }
-  #touchBtns { position: fixed; right: calc(18px + env(safe-area-inset-right)); bottom: calc(26px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; z-index: 20; }
+  #touchBtns { position: fixed; right: calc(18px + env(safe-area-inset-right)); bottom: calc(26px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: 64px 64px; grid-template-areas: '. use' '. ruler' 'jump posture'; gap: 12px; z-index: 20; }
+  #btnUse { grid-area: use; } #btnRulerT { grid-area: ruler; } #btnJump { grid-area: jump; } #btnPosture { grid-area: posture; }   /* 右排：開關 / 量尺 / 姿勢；跳在姿勢左邊 */
   #touchBtns button.ready { background: rgba(255,210,74,.9); color: #222; border-color: #ffd24a; }
   #touchBtns button { width: 64px; height: 64px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); background: rgba(20,22,28,.6);
     color: #fff; font-size: 15px; font-family: inherit; touch-action: manipulation; }
@@ -56,6 +59,8 @@
     <button id="btnMode">切換：俯瞰模式</button>
     <button id="btnCeil">天花板：開</button>
     <button id="btnShot">截圖</button>
+    <button id="btnRuler" class="off">量尺：關</button>
+    <button id="btnRulerClear">清除量測</button>
     <button id="btnLabel" class="off" style="display:none">樑標籤：關</button>
     <button id="btnShowcase">櫃體：方案 1</button>
     <button id="btnKCeil">廚房天花：270 設計師</button>
@@ -93,9 +98,10 @@
 </script>
 <div id="hint">點擊畫面進入室內漫遊</div>
 <div id="cross"></div>
+<div id="rulerHud"></div>
 <div id="touchUI">
   <div id="joyBase" class="walkOnly"><div id="joyStick"></div></div>
-  <div id="touchBtns" class="walkOnly"><button id="btnUse">開關</button><button id="btnJump">跳</button><button id="btnPosture">站</button></div>
+  <div id="touchBtns" class="walkOnly"><button id="btnUse">開關</button><button id="btnRulerT">量尺</button><button id="btnJump">跳</button><button id="btnPosture">站</button></div>
 </div>
 
 <script type="importmap">
@@ -2711,7 +2717,7 @@ function updateUI() {
   touchUI.classList.toggle('orbit', mode !== 'walk');
   if (IS_TOUCH) {
     modeText.innerHTML = mode === 'walk'
-      ? '漫遊模式：左下搖桿移動、單指拖曳轉視角<br>準星對準房門 / 櫃門按「開關」（或直接輕點物件）；右下：開關、跳、姿勢'
+      ? '漫遊模式：左下搖桿移動、單指拖曳轉視角<br>準星對準房門 / 櫃門按「開關」（或直接輕點物件）；右下：開關、量尺（開啟後「開關」變「放點」）、跳、姿勢'
       : '俯瞰模式：單指旋轉、雙指縮放 / 平移<br>輕點房門 / 櫃門 / 抽屜可開關';
     btnMode.textContent = mode === 'walk' ? '切換：俯瞰模式' : '切換：漫遊模式';
   } else if (mode === 'walk') {
@@ -2927,7 +2933,95 @@ function syncDoorsBtn() {
   btnDoors.textContent = `櫃門：${any ? '全關' : '全開'}`;
   btnDoors.classList.toggle('off', !any);
 }
+// ---------- 量尺（R 鍵 / 面板「量尺」按鈕）----------
+// 開啟後：準星（俯瞰模式為滑鼠）對到的表面會出現黃點，點一下放第一點、再點一下放第二點，畫出量測線並標出長度（cm）
+// 會自動吸附到板材邊緣 / 轉角（2cm 內），量櫃體寬深高比較準；畫面下方同時顯示寬（東西）/ 深（南北）/ 高 分量
+// 可連續量多段；X 鍵或「清除」鍵清掉全部；關閉量尺也會清掉
+const ruler = (() => {
+  const yellow = new THREE.MeshBasicMaterial({ color: 0xffd24a, toneMapped: false, depthTest: false });
+  const lineMat = new THREE.LineBasicMaterial({ color: 0xffd24a, toneMapped: false, depthTest: false });
+  try { [yellow, lineMat].forEach(m => { m.userData.baseColor = m.color.clone(); selfLit.push(m); }); } catch (e) { /* 沒有後製補償的版本 */ }
+  const dotGeo = new THREE.SphereGeometry(0.012, 12, 8);
+  const group = new THREE.Group(); scene.add(group);
+  const mk = (geo, mat) => { const m = new THREE.Mesh(geo, mat); m.renderOrder = 999; return m; };
+  const cursor = mk(dotGeo, yellow); cursor.visible = false; scene.add(cursor);
+  const preview = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), lineMat);
+  preview.renderOrder = 999; preview.visible = false; preview.frustumCulled = false; scene.add(preview);
+  const hud = document.getElementById('rulerHud'), btn = document.getElementById('btnRuler');
+  const rc = new THREE.Raycaster();
+  let on = false, a = null, hover = null, t = 0;
+  const own = (o) => o === cursor || o.parent === group;
+  function snap(p, o) {                                                          // 吸附到該物件外框的邊 / 角（各軸 2cm 內）
+    const b = new THREE.Box3().setFromObject(o), tol = 0.02;
+    ['x', 'y', 'z'].forEach(k => { if (Math.abs(p[k] - b.min[k]) < tol) p[k] = b.min[k]; else if (Math.abs(p[k] - b.max[k]) < tol) p[k] = b.max[k]; });
+    return p;
+  }
+  function hit(ndc) {
+    rc.setFromCamera(ndc, camera); rc.far = 200;
+    for (const h of rc.intersectObjects(scene.children, true)) {
+      const o = h.object;
+      if (!o.isMesh || own(o) || !shown(o) || o.material.transparent || o.material.depthTest === false) continue;
+      return snap(h.point.clone(), o);
+    }
+    return null;
+  }
+  const cm = (v) => (v * 100).toFixed(1);
+  function describe(p, q) {
+    const d = q.clone().sub(p);
+    return `${cm(p.distanceTo(q))} cm　<span>寬 ${cm(Math.abs(d.x))}／深 ${cm(Math.abs(d.z))}／高 ${cm(Math.abs(d.y))}</span>`;
+  }
+  function label(text, pos) {
+    const c = document.createElement('canvas'); c.width = 256; c.height = 72;
+    const g = c.getContext('2d');
+    g.fillStyle = 'rgba(20,20,22,.78)'; g.beginPath(); g.roundRect(4, 6, 248, 60, 14); g.fill();
+    g.fillStyle = '#ffd24a'; g.font = 'bold 36px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 128, 37);
+    const m = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, toneMapped: false });
+    const s = new THREE.Sprite(m); s.renderOrder = 1000; s.scale.set(0.32, 0.09, 1); s.position.copy(pos); s.position.y += 0.05;
+    return s;
+  }
+  function setHud(html) { hud.innerHTML = html; hud.style.display = on ? 'block' : 'none'; }
+  function set(v) {
+    on = v; a = null; cursor.visible = false; preview.visible = false;
+    if (!on) group.clear();
+    btn.textContent = `量尺：${on ? '開' : '關'}`; btn.classList.toggle('off', !on);
+    const bt = document.getElementById('btnRulerT'), bu = document.getElementById('btnUse');   // 手機：量尺鍵亮起，「開關」鍵改成「放點」
+    if (bt) bt.classList.toggle('ready', on);
+    if (bu) bu.textContent = on ? '放點' : '開關';
+    setHud(on ? '量尺：對準第一點後點一下' : '');
+  }
+  function click(ndc) {
+    const p = hit(ndc); if (!p) return;
+    if (!a) { a = p; const d = mk(dotGeo, yellow); d.position.copy(p); group.add(d); setHud('量尺：再點第二點'); return; }
+    const d = mk(dotGeo, yellow); d.position.copy(p); group.add(d);
+    const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, p]), lineMat); ln.renderOrder = 999; ln.frustumCulled = false; group.add(ln);
+    group.add(label(`${cm(a.distanceTo(p))} cm`, a.clone().add(p).multiplyScalar(0.5)));
+    setHud(describe(a, p) + '<br><small>點下一段的第一點；X 清除</small>');
+    a = null; preview.visible = false;
+  }
+  function update(ndc, dt) {
+    if (!on) return;
+    t += dt; if (t < 0.05) return; t = 0;                                         // 每秒最多算 20 次，避免拖慢畫面
+    hover = hit(ndc);
+    cursor.visible = !!hover; if (hover) cursor.position.copy(hover);
+    if (a && hover) {
+      preview.geometry.setFromPoints([a, hover]); preview.visible = true;
+      setHud(describe(a, hover));
+    } else preview.visible = false;
+  }
+  btn.onclick = (e) => { e.stopPropagation(); set(!on); };
+  const bt = document.getElementById('btnRulerT');
+  if (bt) bt.addEventListener('touchstart', (e) => { e.preventDefault(); set(!on); }, { passive: false });
+  document.getElementById('btnRulerClear').onclick = (e) => { e.stopPropagation(); group.clear(); a = null; if (on) setHud('量尺：對準第一點後點一下'); };
+  addEventListener('keydown', (e) => {
+    if (e.code === 'KeyR' && !e.repeat) set(!on);
+    if (e.code === 'KeyX' && on) { group.clear(); a = null; setHud('量尺：對準第一點後點一下'); }
+  });
+  return { get on() { return on; }, click, update };
+})();
+let mouseNdc = new THREE.Vector2(9, 9);
+renderer.domElement.addEventListener('pointermove', (e) => { mouseNdc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); });
 function interact(ndc, far) {
+  if (ruler.on) { ruler.click(ndc); return; }                                         // 量尺開啟時：點擊 = 放量測點
   const m = pick(ndc, far);
   if (m && m.stops) m.si = (m.si + 1) % m.stops.length;                             // 多段（餐椅：現在 → 拉出 → 完全收進 → 現在）
   else if (m) { m.open = !m.open; syncDoorsBtn(); }
@@ -3122,6 +3216,7 @@ function tick() {
     }
   }
   if (orbit.enabled) orbit.update();
+  ruler.update(mode === 'walk' ? CENTER : mouseNdc, rawDt || 0.016);
   syncSelfLit();
   if (aoOn) composer.render(); else renderer.render(scene, camera);
   if (shotPending) {                                                     // 截圖：剛畫完這一幀就讀畫布（不用開 preserveDrawingBuffer）
