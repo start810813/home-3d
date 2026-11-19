@@ -1720,6 +1720,9 @@ function tick() {
 function fitCanvas() {
   const c = renderer.domElement, w = c.clientWidth || innerWidth, h = c.clientHeight || innerHeight;
   camera.aspect = w / h;
+  // 視野：水平固定約 90°（一般 FPS 遊戲的預設值），依螢幕比例換算垂直視角；直式手機螢幕最多 70°
+  // （原本垂直 70° 在 16:9 螢幕上等於水平約 100°，近牆時畫面邊緣拉伸大、轉頭時容易暈）
+  camera.fov = Math.min(70, THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(90 / 2)) / camera.aspect)));
   camera.updateProjectionMatrix();
   renderer.setSize(w, h, false);
 }
