@@ -2933,6 +2933,208 @@ function syncDoorsBtn() {
   btnDoors.textContent = `櫃門：${any ? '全關' : '全開'}`;
   btnDoors.classList.toggle('off', !any);
 }
+// ---------- 量尺的第一人稱捲尺（只在漫遊模式顯示）----------
+// 開量尺 → 雙手從畫面下方舉起：左手托著捲尺盒、右手捏著尺頭（兩手之間拉出一小段鋼帶）；放第一點 → 尺頭飛過去勾住、鋼帶從盒口拉到該點（跟著走動伸縮），右手放下；
+// 放第二點 → 鋼帶咻一聲收回、右手回來捏住尺頭。手和捲尺另外畫在最上層（不會插進牆裡），用 matcap 材質，不受室內燈光影響
+const tape = (() => {
+  const vmScene = new THREE.Scene(), vm = new THREE.Group(); vmScene.add(vm);
+  const matcapTex = (stops) => {
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d'), gr = g.createRadialGradient(50, 42, 2, 64, 64, 66);
+    stops.forEach(([o, col]) => gr.addColorStop(o, col));
+    g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+  };
+  const mc = (stops) => new THREE.MeshMatcapMaterial({ matcap: matcapTex(stops), toneMapped: false, side: THREE.DoubleSide });
+  const skin = mc([[0, '#f7d9c4'], [0.35, '#e2b296'], [0.75, '#c08466'], [1, '#7a4a36']]);
+  const nail = mc([[0, '#fbe9e2'], [0.5, '#e8c3b6'], [1, '#a77c70']]);
+  const sleeve = mc([[0, '#8d99a6'], [0.4, '#56616d'], [1, '#1c2228']]);
+  const caseY = mc([[0, '#fff3b0'], [0.4, '#f2c230'], [1, '#8a6406']]), caseK = mc([[0, '#77777b'], [0.45, '#2b2b2e'], [1, '#09090a']]);
+  const metal = mc([[0, '#ffffff'], [0.4, '#b9bcc0'], [1, '#4d5054']]);
+  const mesh = (geo, mat, parent, x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); parent.add(m); return m; };
+  const cap = (r, l) => new THREE.CapsuleGeometry(r, Math.max(0.001, l - 2 * r), 6, 14);
+  const rbox = (w, h, d, r) => {                                                      // 圓角方塊（手掌、捲尺盒）
+    const s = new THREE.Shape(), x = -w / 2 + r, y = -h / 2 + r, W = w - 2 * r, H = h - 2 * r;
+    s.moveTo(x, -h / 2); s.lineTo(x + W, -h / 2); s.quadraticCurveTo(w / 2, -h / 2, w / 2, y); s.lineTo(w / 2, y + H);
+    s.quadraticCurveTo(w / 2, h / 2, x + W, h / 2); s.lineTo(x, h / 2); s.quadraticCurveTo(-w / 2, h / 2, -w / 2, y + H);
+    s.lineTo(-w / 2, y); s.quadraticCurveTo(-w / 2, -h / 2, x, -h / 2);
+    const g = new THREE.ExtrudeGeometry(s, { depth: d - 2 * r * 0.6, bevelEnabled: true, bevelThickness: r * 0.6, bevelSize: r * 0.6, bevelSegments: 4, curveSegments: 6 });
+    g.translate(0, 0, -(d - 2 * r * 0.6) / 2); return g;
+  };
+  // 手（右手的幾何；左手用鏡像）：腕在原點，手指往 +y，掌心朝 +z，拇指在 +x 側
+  // curl：[食, 中, 無名, 小] 各 [近節, 中節, 遠節] 彎曲角（往掌心）；thumb：[外展, 彎曲1, 彎曲2]
+  function makeHand(mirror) {
+    const h = new THREE.Group(), root = new THREE.Group(); h.add(root);
+    if (mirror) root.scale.x = -1;
+    mesh(rbox(0.074, 0.082, 0.026, 0.012), skin, root, 0, 0.047, 0);                      // 手掌
+    mesh(cap(0.026, 0.06), skin, root, 0, 0.005, -0.001).scale.set(1, 1, 0.62);            // 手腕
+    const sl = mesh(new THREE.CylinderGeometry(0.036, 0.045, 0.55, 20), sleeve, root, 0, -0.27, -0.002); sl.scale.z = 0.8;   // 袖子   // 前臂（短袖，露出手臂）
+    const fingers = [], F = [[0.026, 0.0088, [0.04, 0.025, 0.021]], [0.009, 0.0093, [0.044, 0.028, 0.022]], [-0.009, 0.0089, [0.041, 0.026, 0.021]], [-0.025, 0.0079, [0.032, 0.02, 0.018]]];
+    F.forEach(([x, r, L], i) => {
+      let parent = new THREE.Group(); parent.position.set(x, 0.084 - (i === 3 ? 0.006 : 0), 0); root.add(parent);
+      const joints = [];
+      L.forEach((len, k) => {
+        const j = new THREE.Group(); if (k) j.position.y = L[k - 1]; parent.add(j); joints.push(j);
+        mesh(cap(r * (1 - k * 0.06), len + r), skin, j, 0, len / 2, 0);
+        if (k === 2) { const n = mesh(rbox(r * 1.5, len * 0.6, 0.002, 0.003), nail, j, 0, len * 0.62, -r * 0.82); n.rotation.x = 0.08; }   // 指甲（手背側）
+        parent = j;
+      });
+      fingers.push(joints);
+    });
+    const tb = new THREE.Group(); tb.position.set(0.032, 0.022, 0.006); root.add(tb);        // 拇指
+    const t1 = new THREE.Group(); tb.add(t1); mesh(cap(0.0125, 0.042), skin, t1, 0, 0.021, 0);
+    const t2 = new THREE.Group(); t2.position.y = 0.036; t1.add(t2); mesh(cap(0.0108, 0.032), skin, t2, 0, 0.016, 0);
+    const t3 = new THREE.Group(); t3.position.y = 0.028; t2.add(t3); mesh(cap(0.0098, 0.026), skin, t3, 0, 0.013, 0);
+    { const n = mesh(rbox(0.014, 0.014, 0.002, 0.003), nail, t3, 0, 0.016, -0.0085); n.rotation.x = 0.1; }
+    h.pose = (curl, thumb) => {
+      fingers.forEach((js, i) => js.forEach((j, k) => { j.rotation.x = curl[i][k]; }));
+      tb.rotation.set(thumb[3] || 0, 0, -thumb[0]); t1.rotation.x = thumb[1]; t2.rotation.x = thumb[2]; t3.rotation.x = thumb[2] * 0.8;
+    };
+    h.root = root;
+    h.tip = (i, k = 2) => fingers[i][k];
+    h.thumbTip = t3;
+    return h;
+  }
+  // 左手：托著捲尺盒（盒口朝右前方）
+  const LH = makeHand(true); vm.add(LH);
+  const L_POSE = [[[1.05, 1.15, 0.6], [1.1, 1.2, 0.6], [1.15, 1.2, 0.6], [1.2, 1.2, 0.6]], [0.35, 0.6, 0.4, 0.9]];
+  LH.pose([[1.05, 1.15, 0.6], [1.1, 1.2, 0.6], [1.15, 1.2, 0.6], [1.2, 1.2, 0.6]], [0.35, 0.6, 0.4, 0.9]);
+  const box = new THREE.Group(); vm.add(box);                                         // 捲尺盒（每幀放到左手掌心前方）
+  const palmPt = new THREE.Vector3(0, 0.06, 0.05);
+  mesh(rbox(0.07, 0.068, 0.038, 0.012), caseY, box);
+  mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.04, 28), caseK, box).rotation.x = Math.PI / 2;
+  mesh(rbox(0.016, 0.018, 0.03, 0.004), caseK, box, 0.036, -0.022, 0);                     // 盒口
+  mesh(rbox(0.012, 0.024, 0.014, 0.004), caseK, box, -0.014, 0.036, 0);                     // 鎖定鈕
+  const mouth = new THREE.Object3D(); mouth.position.set(0.045, -0.027, 0); box.add(mouth);
+  // 右手：拇指和食指捏著尺頭
+  const RH = makeHand(false); vm.add(RH);
+  // 右手側捏（拿鋼帶的自然手勢）：食指自然彎、拇指指腹壓在食指第二節側面；其他三指輕握。各關節角度都在真人手的活動範圍內
+  const R_POSE = [[[1.2, 1.32, 0.72], [1.0, 1.15, 0.55], [1.05, 1.2, 0.6], [1.1, 1.2, 0.6]], [-0.2, 0.8, 0.6, 0.6]];
+  const R_GRIP = [[[1.25, 1.38, 0.75], [1.1, 1.25, 0.6], [1.15, 1.3, 0.65], [1.2, 1.3, 0.65]], [-0.2, 0.9, 0.7, 0.6]];   // 扶鋼帶時稍微捏緊（只加一點點，避免手指折過頭）
+  RH.pose([[0.35, 0.45, 0.25], [1.35, 1.5, 0.9], [1.45, 1.5, 0.9], [1.5, 1.45, 0.9]], [0.85, 0.35, 0.25, 0.6]);
+  const idxTip = new THREE.Object3D(); idxTip.position.set(0, 0.02, 0.004); RH.tip(0).add(idxTip);
+  const thTip = new THREE.Object3D(); thTip.position.set(0, 0.024, 0.004); RH.thumbTip.add(thTip);
+  const tA = new THREE.Vector3(), tB = new THREE.Vector3();
+  // 依「手指方向 / 掌心方向」擺手（相機座標）
+  const orient = (o, fingers, palm) => {
+    const y = fingers.clone().normalize(), z = palm.clone().sub(y.clone().multiplyScalar(palm.dot(y))).normalize(), x = new THREE.Vector3().crossVectors(y, z);
+    o.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z));
+  };
+  // 寫實手部模型：WebXR Input Profiles 的 generic-hand（Amazon，MIT 授權），有 25 個指節骨架；載入後取代上面的簡易手（簡易手的骨架留著不顯示）
+  // 模型的骨頭是平鋪的（都掛在 Armature 下），所以手指彎曲用正向運動學自己算：每一節繞「指節方向 × 掌心法線」轉，帶動後面所有指節
+  const glbHand = { L: null, R: null };
+  function rigHand(scene3, isLeft, holder, pose) {
+    const J = {}; scene3.traverse(o => { if (o.isBone || /finger|thumb|wrist/.test(o.name)) J[o.name] = o; if (o.isSkinnedMesh) { o.material = skin; o.frustumCulled = false; } });
+    const P = (n) => J[n].position.clone();
+    const W = P('wrist'), y = P('middle-finger-phalanx-proximal').sub(W).normalize();
+    let x = P('index-finger-phalanx-proximal').sub(P('pinky-finger-phalanx-proximal')).normalize();
+    if (isLeft) x.negate();
+    x.sub(y.clone().multiplyScalar(x.dot(y))).normalize();
+    const z = new THREE.Vector3().crossVectors(x, y);                                     // 掌心法線（手的座標：x 拇指側、y 手指、z 掌心）
+    const wrap = new THREE.Group(); wrap.matrixAutoUpdate = false;
+    wrap.matrix.copy(new THREE.Matrix4().makeBasis(x, y, z).invert().multiply(new THREE.Matrix4().makeTranslation(-W.x, -W.y, -W.z)));
+    wrap.add(scene3); holder.add(wrap);
+    const rest = {}; Object.values(J).forEach(o => { rest[o.name] = [o.position.clone(), o.quaternion.clone()]; });
+    const chains = ['index', 'middle', 'ring', 'pinky'].map(f => ['metacarpal', 'phalanx-proximal', 'phalanx-intermediate', 'phalanx-distal', 'tip'].map(k => J[`${f}-finger-${k}`]));
+    const thumb = ['metacarpal', 'phalanx-proximal', 'phalanx-distal', 'tip'].map(k => J[`thumb-${k}`]);
+    const q = new THREE.Quaternion(), ax = new THREE.Vector3(), dv = new THREE.Vector3();
+    const bend = (chain, k, ang) => {                                                     // 第 k 節往掌心彎 ang（帶動後面所有節）
+      if (!ang) return;
+      const piv = chain[k].position, nxt = chain[k + 1].position;
+      ax.crossVectors(dv.copy(nxt).sub(piv).normalize(), z).normalize();
+      q.setFromAxisAngle(ax, ang);
+      for (let j = k; j < chain.length; j++) {
+        if (j > k) chain[j].position.sub(piv).applyQuaternion(q).add(piv);
+        chain[j].quaternion.premultiply(q);
+      }
+    };
+    const apply = (pose) => {
+      Object.values(J).forEach(o => { o.position.copy(rest[o.name][0]); o.quaternion.copy(rest[o.name][1]); });
+      pose[0].forEach((c, i) => c.forEach((a, k) => bend(chains[i], k + 1, a)));
+      bend(thumb, 0, pose[1][0] * 0.55); bend(thumb, 1, pose[1][1]); bend(thumb, 2, pose[1][2]);
+    };
+    apply(pose);
+    holder.root.traverse(o => { if (o.isMesh && (o.material === skin || o.material === nail)) o.visible = false; });   // 藏起簡易手（袖子留著）
+    return { idx: J['index-finger-phalanx-distal'], th: J['thumb-tip'], apply, J };   // 側捏：拇指指腹壓在食指第二節側面（拿鋼帶的自然手勢）
+  }
+  import('three/addons/loaders/GLTFLoader.js').then(({ GLTFLoader }) => {
+    const url = 'https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0.17/dist/profiles/generic-hand/';
+    const ld = new GLTFLoader();
+    ld.load(url + 'left.glb', g => { glbHand.L = rigHand(g.scene, true, LH, L_POSE); });
+    ld.load(url + 'right.glb', g => { glbHand.R = rigHand(g.scene, false, RH, R_POSE); });
+  }).catch(() => { /* 載不到就用簡易手 */ });
+  // 尺帶（世界座標裡的一條黃色鋼帶，有刻度）+ 尺頭
+  const tickTex = (() => {
+    const c = document.createElement('canvas'); c.width = 256; c.height = 32;
+    const g = c.getContext('2d'); g.fillStyle = '#f4c62e'; g.fillRect(0, 0, 256, 32); g.fillStyle = '#1b1b1b';
+    for (let i = 0; i <= 50; i++) { const x = i * 256 / 50; g.fillRect(x, 0, i % 10 === 0 ? 3 : 1.5, i % 10 === 0 ? 18 : i % 5 === 0 ? 12 : 7); }
+    g.fillStyle = '#c0321f'; g.font = 'bold 13px sans-serif'; g.fillText('10', 4, 30);
+    const t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; return t;   // 一張 = 10cm
+  })();
+  const bladeMat = new THREE.MeshBasicMaterial({ map: tickTex, toneMapped: false, side: THREE.DoubleSide });
+  const blade = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), bladeMat); blade.visible = false; blade.frustumCulled = false; vmScene.add(blade);
+  const hook = new THREE.Group(); vmScene.add(hook);
+  mesh(new THREE.BoxGeometry(0.022, 0.003, 0.026), metal, hook);
+  mesh(new THREE.BoxGeometry(0.003, 0.018, 0.026), metal, hook, 0.011, -0.008, 0);
+  // 狀態
+  let equip = 0, equipOn = false, ext = 0, extTarget = 0, anchor = null, t = 0, yaw = 0.35, gripW = 0;
+  const mouthW = new THREE.Vector3(), homeW = new THREE.Vector3(), hookW = new THREE.Vector3(), dir = new THREE.Vector3(), X = new THREE.Vector3(1, 0, 0);
+  function frame(dt, walking) {
+    t += dt;
+    const target = equipOn && walking ? 1 : 0;
+    equip += Math.sign(target - equip) * Math.min(Math.abs(target - equip), dt / 0.35);
+    vm.visible = equip > 0.001;
+    if (!vm.visible) { blade.visible = hook.visible = false; return; }
+    const e = 1 - Math.pow(1 - equip, 3), bob = Math.sin(t * 2) * 0.0025;
+    vm.position.copy(camera.position); vm.quaternion.copy(camera.quaternion);
+    ext += Math.sign(extTarget - ext) * Math.min(Math.abs(extTarget - ext), dt / (extTarget ? 0.22 : 0.3));
+    LH.position.set(-0.13, -0.18 - (1 - e) * 0.32 + bob + (extTarget === 0 && ext > 0 ? Math.sin(ext * Math.PI) * 0.008 : 0), -0.34);
+    orient(LH, new THREE.Vector3(0.3, 0.55, -1), new THREE.Vector3(1, 0.55, 0.35));
+    const RH0 = new THREE.Vector3(0.155, -0.175 - (1 - e) * 0.32 + bob, -0.33);       // 兩手拉開約 25cm，中間拉出一段鋼帶
+    RH.position.copy(RH0);
+    orient(RH, new THREE.Vector3(-0.75, 0.3, -0.8), new THREE.Vector3(-0.35, -1, 0.15));
+    LH.updateMatrix(); box.position.copy(palmPt).applyMatrix4(LH.matrix);
+    let yawT = 0.35;                                                                    // 平常盒口朝右（朝右手）；尺拉出去時盒口轉向尺頭方向
+    if (anchor && extTarget) { vm.updateMatrixWorld(true); const d = vm.worldToLocal(anchor.clone()).sub(box.position); yawT = Math.atan2(-d.z, d.x); }
+    let dy = yawT - yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); yaw += dy * Math.min(1, dt * 10);
+    box.rotation.set(0.25, yaw, 0.1);
+    vm.updateMatrixWorld(true);
+    mouth.getWorldPosition(mouthW);
+    // 右手捏尺頭的位置：平常在盒口右邊約 20cm、同高（兩手之間拉出一段水平鋼帶）；拉尺時移到盒口前方約 13cm 處扶著鋼帶
+    const pinchL = () => { vm.updateMatrixWorld(true); const g = glbHand.R; (g ? g.idx : idxTip).getWorldPosition(tA); (g ? g.th : thTip).getWorldPosition(tB); return vm.worldToLocal(homeW.copy(tA).add(tB).multiplyScalar(0.5)); };
+    const mouthL = vm.worldToLocal(mouthW.clone());
+    const T = mouthL.clone().add(new THREE.Vector3(0.2, -0.005, 0.005));
+    const sup = anchor ? Math.min(1, ext * 1.4) : 0;
+    if (sup > 0) {
+      const SL = vm.worldToLocal(dir.copy(anchor).sub(mouthW).normalize().multiplyScalar(0.22).add(mouthW));
+      const side = THREE.MathUtils.clamp((SL.x - box.position.x - 0.02) / 0.06, 0, 1);   // 扶的位置在盒子左邊（尺往左拉）時不跨過去，右手留在原位
+      const w = sup * sup * (3 - 2 * sup) * side;
+      T.lerp(SL, w);
+      if (glbHand.R && Math.abs(w - gripW) > 0.01) { gripW = w; glbHand.R.apply(R_POSE.map((g, gi) => gi === 0 ? g.map((f, i) => f.map((a, k) => a + (R_GRIP[0][i][k] - a) * w)) : g.map((a, k) => a + (R_GRIP[1][k] - a) * w))); }
+    } else if (glbHand.R && gripW !== 0) { gripW = 0; glbHand.R.apply(R_POSE); }
+    RH.position.add(T.sub(pinchL()));
+    pinchL(); vm.localToWorld(homeW);                                                    // homeW = 右手捏住的點（世界座標）
+    if (anchor && ext > 0) hookW.copy(homeW).lerp(anchor, ext);
+    else { hookW.copy(homeW); if (ext === 0 && extTarget === 0) anchor = null; }
+    const len = mouthW.distanceTo(hookW);
+    blade.visible = len > 0.005; hook.visible = true;
+    blade.position.copy(mouthW).add(hookW).multiplyScalar(0.5);                          // 鋼帶：長 = 盒口到尺頭、寬 2.5cm，刻度每 10cm 一張貼圖
+    blade.scale.set(Math.max(len, 0.001), 1, 0.025);
+    blade.quaternion.setFromUnitVectors(X, dir.copy(hookW).sub(mouthW).normalize());
+    tickTex.repeat.set(len / 0.1, 1);
+    hook.position.copy(hookW); hook.quaternion.copy(blade.quaternion);
+  }
+  function draw() {
+    if (!vm.visible) return;
+    renderer.autoClear = false; renderer.clearDepth(); renderer.render(vmScene, camera); renderer.autoClear = true;
+  }
+  return {
+    frame, draw, glbHand,
+    equip(v) { equipOn = v; if (!v) extTarget = 0; },
+    extend(p) { anchor = p.clone(); ext = 0; extTarget = 1; },
+    retract() { extTarget = 0; },
+  };
+})();
 // ---------- 量尺（R 鍵 / 面板「量尺」按鈕）----------
 // 開啟後：準星（俯瞰模式為滑鼠）對到的表面會出現黃點，點一下放第一點、再點一下放第二點，畫出量測線並標出長度（cm）
 // 會自動吸附到板材邊緣 / 轉角（2cm 內），量櫃體寬深高比較準；畫面下方同時顯示寬（東西）/ 深（南北）/ 高 分量
@@ -2981,7 +3183,7 @@ const ruler = (() => {
   }
   function setHud(html) { hud.innerHTML = html; hud.style.display = on ? 'block' : 'none'; }
   function set(v) {
-    on = v; a = null; cursor.visible = false; preview.visible = false;
+    on = v; a = null; cursor.visible = false; preview.visible = false; tape.equip(v);
     if (!on) group.clear();
     btn.textContent = `量尺：${on ? '開' : '關'}`; btn.classList.toggle('off', !on);
     const bt = document.getElementById('btnRulerT'), bu = document.getElementById('btnUse');   // 手機：量尺鍵亮起，「開關」鍵改成「放點」
@@ -2991,12 +3193,12 @@ const ruler = (() => {
   }
   function click(ndc) {
     const p = hit(ndc); if (!p) return;
-    if (!a) { a = p; const d = mk(dotGeo, yellow); d.position.copy(p); group.add(d); setHud('量尺：再點第二點'); return; }
+    if (!a) { a = p; const d = mk(dotGeo, yellow); d.position.copy(p); group.add(d); setHud('量尺：再點第二點'); tape.extend(p); return; }
     const d = mk(dotGeo, yellow); d.position.copy(p); group.add(d);
     const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, p]), lineMat); ln.renderOrder = 999; ln.frustumCulled = false; group.add(ln);
     group.add(label(`${cm(a.distanceTo(p))} cm`, a.clone().add(p).multiplyScalar(0.5)));
     setHud(describe(a, p) + '<br><small>點下一段的第一點；X 清除</small>');
-    a = null; preview.visible = false;
+    a = null; preview.visible = false; tape.retract();
   }
   function update(ndc, dt) {
     if (!on) return;
@@ -3218,7 +3420,9 @@ function tick() {
   if (orbit.enabled) orbit.update();
   ruler.update(mode === 'walk' ? CENTER : mouseNdc, rawDt || 0.016);
   syncSelfLit();
+  tape.frame(rawDt > 0.1 ? 0.1 : rawDt, mode === 'walk');
   if (aoOn) composer.render(); else renderer.render(scene, camera);
+  tape.draw();                                                                        // 手和捲尺畫在最上層
   if (shotPending) {                                                     // 截圖：剛畫完這一幀就讀畫布（不用開 preserveDrawingBuffer）
     shotPending = false;
     renderer.domElement.toBlob(b => {
