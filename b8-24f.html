@@ -23,9 +23,27 @@
     position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
     color: #fff; font-size: 18px; pointer-events: none; text-shadow: 0 0 6px #000;
   }
+  #furnHud { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); padding: 6px 12px; border-radius: 8px; background: rgba(20,22,28,.78); color: #ffd24a; font: 600 15px/1.45 system-ui, sans-serif; text-align: center; display: none; pointer-events: none; z-index: 20; }
+  #furnHud span { color: #e8e2d6; font-weight: 400; font-size: 13px; } #furnHud small { color: #aaa; font-weight: 400; }
+  #bagBar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); display: none; gap: 6px; z-index: 21; }
+  #bagBar .slot { width: 64px; height: 64px; border-radius: 8px; border: 2px solid rgba(255,255,255,.35); background: rgba(20,22,28,.7); color: #f3efe6; font: 600 12px/1.25 system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; cursor: pointer; padding: 2px; box-sizing: border-box; }
+  #bagBar .slot b { color: #ffd24a; font-size: 11px; }
+  #bagBar .slot.empty { opacity: .45; cursor: default; }
+  #furnTouch { position: fixed; right: calc(18px + env(safe-area-inset-right)); bottom: calc(262px + env(safe-area-inset-bottom)); display: none; flex-direction: column; gap: 10px; z-index: 22; }
+  #furnTouch button { width: 64px; height: 52px; border-radius: 14px; border: 2px solid rgba(255,210,74,.7); background: rgba(20,22,28,.75); color: #ffd24a; font: 700 16px system-ui, sans-serif; }
+  @media (pointer: coarse) {                                                       /* 手機：背包快捷欄移到上方（下方是搖桿與按鍵），格子縮小 */
+    #bagBar { top: calc(10px + env(safe-area-inset-top)); bottom: auto; gap: 4px; }
+    #bagBar .slot { width: 36px; height: 40px; font-size: 9px; border-radius: 6px; }
+    #furnHud { top: calc(58px + env(safe-area-inset-top)); bottom: auto; font-size: 13px; max-width: 90vw; }
+  }
   #rulerHud { position: fixed; left: 50%; top: calc(50% + 22px); transform: translateX(-50%); padding: 6px 12px; border-radius: 8px; background: rgba(20,20,22,.75); color: #ffd24a; font: 600 15px/1.45 system-ui, sans-serif; text-align: center; display: none; pointer-events: none; white-space: nowrap; z-index: 20; }
   #rulerHud span { color: #e8e2d6; font-weight: 400; font-size: 13px; } #rulerHud small { color: #aaa; font-weight: 400; }
-  #cross { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: rgba(255,255,255,.7); display: none; }
+  /* 準星：白色十字 + 深色描邊（白牆上也看得到）；對到可互動 / 可搬的東西 → 變黃、外圈亮起 */
+  #cross { position: fixed; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px; display: none; pointer-events: none; z-index: 15; }
+  #cross::before, #cross::after { content: ''; position: absolute; left: 50%; top: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.55); transform: translate(-50%, -50%); }
+  #cross::before { width: 14px; height: 2px; } #cross::after { width: 2px; height: 14px; }
+  #cross.hot { border: 2px solid #ffd24a; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.45), inset 0 0 0 1px rgba(0,0,0,.25); box-sizing: border-box; }
+  #cross.hot::before, #cross.hot::after { background: #ffd24a; }
   /* ---------- 手機 / 平板觸控 ---------- */
   /* 畫布固定鋪滿整個螢幕（含 iPhone 瀏海 / 手勢條區域），避免橫向時出現黑邊 */
   canvas { touch-action: none; position: fixed; left: 0; top: 0; display: block; width: 100vw !important; height: 100vh !important; height: 100dvh !important; }
@@ -35,7 +53,8 @@
   #joyBase { position: fixed; left: calc(22px + env(safe-area-inset-left)); bottom: calc(22px + env(safe-area-inset-bottom)); width: 124px; height: 124px; border-radius: 50%;
     background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.35); touch-action: none; z-index: 20; }
   #joyStick { position: absolute; left: 37px; top: 37px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,.6); pointer-events: none; }
-  #touchBtns { position: fixed; right: calc(18px + env(safe-area-inset-right)); bottom: calc(26px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: 64px 64px; grid-template-areas: '. use' '. ruler' 'jump posture'; gap: 12px; z-index: 20; }
+  #touchBtns { position: fixed; right: calc(18px + env(safe-area-inset-right)); bottom: calc(26px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: 64px 64px; grid-template-areas: '. use' 'furn ruler' 'jump posture'; gap: 12px; z-index: 20; }
+  #btnFurnT { grid-area: furn; }
   #btnUse { grid-area: use; } #btnRulerT { grid-area: ruler; } #btnJump { grid-area: jump; } #btnPosture { grid-area: posture; }   /* 右排：開關 / 量尺 / 姿勢；跳在姿勢左邊 */
   #touchBtns button.ready { background: rgba(255,210,74,.9); color: #222; border-color: #ffd24a; }
   #touchBtns button { width: 64px; height: 64px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); background: rgba(20,22,28,.6);
@@ -61,6 +80,8 @@
     <button id="btnShot">截圖</button>
     <button id="btnRuler" class="off">量尺：關</button>
     <button id="btnRulerClear">清除量測</button>
+    <button id="btnFurn" class="off">搬家具：關</button>
+    <button id="btnBag">背包</button>
     <button id="btnDoors" class="off">櫃門：全關</button>
     <button id="btnBright">曝光：標準</button>
     <button id="btnFire">消防管線：開</button>
@@ -90,9 +111,12 @@
 <div id="hint">點擊畫面進入室內漫遊</div>
 <div id="cross"></div>
 <div id="rulerHud"></div>
+<div id="furnHud"></div>
+<div id="bagBar"></div>
+<div id="furnTouch"><button data-a="rot">轉</button><button data-a="store">收</button><button data-a="cancel">取消</button></div>
 <div id="touchUI">
   <div id="joyBase" class="walkOnly"><div id="joyStick"></div></div>
-  <div id="touchBtns" class="walkOnly"><button id="btnUse">開關</button><button id="btnRulerT">量尺</button><button id="btnJump">跳</button><button id="btnPosture">站</button></div>
+  <div id="touchBtns" class="walkOnly"><button id="btnUse">開關</button><button id="btnRulerT">量尺</button><button id="btnFurnT">搬</button><button id="btnJump">跳</button><button id="btnPosture">站</button></div>
 </div>
 
 <script type="importmap">
@@ -229,6 +253,52 @@ function woodFloorMaterial(r) {
 const solids = [];
 
 // 以平面圖 px 座標 (x1,y1)-(x2,y2) 與高度區間 z0~z1 (cm) 建立方塊
+// 碰撞矩形的「原位」備份（capture / movable / grabSince 用來還原或加位移）：搬家具時要一起跟著搬，所以集中登記
+const RECT_BASE = new Map();                                                         // r → [原位陣列, ...]
+const addBase = (r, o) => { (RECT_BASE.get(r) || RECT_BASE.set(r, []).get(r)).push(o); };
+// 可搬動的家具（「搬家具」模式 / 背包）：itemMark() 記下起點，蓋完家具後 itemEnd(名稱, mark) 把新增的物件包成一個以中心為軸的群組
+const ITEMS = [];
+const itemMark = () => [scene.children.length, solids.length];
+function itemEnd(name, [n, ns], opt) {
+  const kids = scene.children.slice(n);
+  if (!kids.length) return null;
+  return makeItem(name, kids, scene, solids.slice(ns), opt);
+}
+// 把已經在場景裡的物件（可在任何父群組下，父群組只能平移）包成可搬家具；small = 小物件（杯子、書、床墊）：不檢查碰撞、放下時貼著下面的表面
+function itemFromObject(name, obj, rects = [], opt) { return makeItem(name, [obj], obj.parent, rects, opt); }
+function makeItem(name, kids, parent, rectList, { small = false } = {}) {
+  parent.updateMatrixWorld(true);
+  const b = new THREE.Box3(); kids.forEach(o => b.expandByObject(o));
+  const c = b.getCenter(new THREE.Vector3()), pw = parent.getWorldPosition(new THREE.Vector3());
+  const pivot = new THREE.Group(), inner = new THREE.Group();
+  pivot.position.set(c.x - pw.x, 0, c.z - pw.z); inner.position.set(-(c.x - pw.x), 0, -(c.z - pw.z));
+  kids.forEach(o => inner.add(o)); pivot.add(inner); parent.add(pivot);
+  const cx = c.x * 100 / CM_PER_PX + ORIGIN.x, cy = c.z * 100 / CM_PER_PX + ORIGIN.y;
+  const rects = rectList.map(r => ({ r, local: [r[0] - cx, r[1] - cy, r[2] - cx, r[3] - cy] }));   // 以目前看得到的位置為準
+  const it = { name, pivot, parent, rects, cx, cy, q: 0, stored: false, small, baseY: b.min.y - pw.y, off: rects.map(() => [0, 0]) };
+  pivot.userData.item = it;
+  ITEMS.push(it);
+  return it;
+}
+// 拿起時記下每個碰撞矩形相對「原位備份」的位移（椅子拉出量、整組平移量），放下後原位備份 = 新位置 - 這個位移
+const recordOff = (it) => { it.off = it.rects.map(e => { const ref = (RECT_BASE.get(e.r) || [])[0]; return ref && e.r[0] > -9000 && ref[0] > -9000 ? [e.r[0] - ref[0], e.r[1] - ref[1]] : [0, 0]; }); };
+// 依中心 (cx, cy) px、轉 q 個 90° 算出家具的碰撞矩形（世界 px）
+const qRot = (x, y, q) => { const c = Math.round(Math.cos(q * Math.PI / 2)), s = Math.round(Math.sin(q * Math.PI / 2)); return [x * c + y * s, -x * s + y * c]; };
+const itemRect = (local, cx, cy, q) => { const a = qRot(local[0], local[1], q), b = qRot(local[2], local[3], q); return [Math.min(a[0], b[0]) + cx, Math.min(a[1], b[1]) + cy, Math.max(a[0], b[0]) + cx, Math.max(a[1], b[1]) + cy]; };
+// 把家具放到世界 (cx, cy, q)、地面高 yM（公尺，小物件放在桌面 / 床架上用）
+function placeItem(it, cx, cy, q, yM = null) {
+  it.cx = cx; it.cy = cy; it.q = q;
+  const pw = it.parent.getWorldPosition(new THREE.Vector3());
+  it.pivot.position.set(px2m(cx - ORIGIN.x) - pw.x, yM === null ? 0 : yM - it.baseY - pw.y, px2m(cy - ORIGIN.y) - pw.z);
+  it.pivot.rotation.y = q * Math.PI / 2;
+  it.rects.forEach((e, i) => {
+    const n = itemRect(e.local, cx, cy, q), off = it.off[i] || [0, 0];
+    (RECT_BASE.get(e.r) || []).forEach(bb => { bb[0] = n[0] - off[0]; bb[1] = n[1] - off[1]; bb[2] = n[2] - off[0]; bb[3] = n[3] - off[1]; });
+    n.forEach((v, k) => { e.r[k] = v; });
+  });
+  renderer.shadowMap.needsUpdate = true;
+}
+const hideItemRects = (it) => it.rects.forEach(e => { e.r[0] = e.r[1] = e.r[2] = e.r[3] = -9999; });
 function box(x1, y1, x2, y2, z0, z1, material, { collide = false, group = scene } = {}) {
   const w = px2m(Math.abs(x2 - x1)), d = px2m(Math.abs(y2 - y1)), h = cm2m(z1 - z0);
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
@@ -1024,6 +1094,7 @@ const tvCx = (TVC.x1 + TVC.x2) / 2;
 //    緊貼短隔間東側（x 248 起），背面在 y 387，面向電視
 const SOFA = { x0: 248, back: 387, w: 220, d: 107, seat: 46 };
 SOFA.front = SOFA.back - cm2px(SOFA.d);
+const __mSofa = itemMark();
 {
   const body = fabric(0x8e8b78), cushion = fabric(0x98947f), chrome = new THREE.MeshStandardMaterial({ color: 0xc9ccd0, roughness: 0.3, metalness: 0.3 });
   const x0 = SOFA.x0, x1 = x0 + cm2px(SOFA.w), yb = SOFA.back, yf = SOFA.front, modW = cm2px(110), seam = cm2px(0.6);
@@ -1046,6 +1117,7 @@ SOFA.front = SOFA.back - cm2px(SOFA.d);
     pl.rotation.x = -0.25; pl.rotation.y = left ? 0.35 : -0.35;
   });
 }
+itemEnd('沙發', __mSofa);
 
 // 把 build() 期間加進場景的物件與碰撞矩形收成一組，回傳 show(on)：隱藏時碰撞矩形也一起移出（麻將模式切換用）
 function grabGroup(build) {
@@ -1055,8 +1127,10 @@ function grabGroup(build) {
   scene.children.slice(n).forEach(o => g.add(o));
   scene.add(g);
   const rects = solids.slice(ns).map(r => [r, r.slice(0, 4)]);
+  rects.forEach(([r, o]) => addBase(r, o));
   return {
     g, show(on) { g.visible = on; rects.forEach(([r, o]) => o.forEach((v, i) => { r[i] = on ? v : -9999; })); },
+    rects: rects.map(([r]) => r),
     move(dx, dy) { g.position.set(px2m(dx), 0, px2m(dy)); rects.forEach(([r, o]) => { r[0] = o[0] + dx; r[2] = o[2] + dx; r[1] = o[1] + dy; r[3] = o[3] + dy; }); },   // 整組平移（px）
   };
 }
@@ -1317,8 +1391,10 @@ function setMahjong(on) {
   for (let i = 0; i < 3; i++) drawer(PF.x1 + i * dw + G, PF.y1 - T, PF.x1 + (i + 1) * dw - G, PF.y1, 3.3, zT - 0.5, cab.greige, { out: -1, depth: 55, travel: 40 });
   // 床墊 + 枕頭：床頭靠東側（x 369.5）
   const mx2 = PF.x2 - cm2px(1), mx1 = mx2 - cm2px(212), my1 = (PF.y1 + PF.y2) / 2 - cm2px(91), my2 = my1 + cm2px(182);   // 雙人特大 6x7 尺（182 x 212）
+  const __mMat = itemMark();
   softBox(mx1, my1, mx2, my2, PF.h, PF.h + 25, 5, fabric(0xe9e6df));
   [my1 + cm2px(45), my2 - cm2px(45)].forEach(yc => softBox(mx2 - cm2px(44), yc - cm2px(33), mx2 - cm2px(4), yc + cm2px(33), PF.h + 25, PF.h + 37, 6, fabric(0xf4f2ee)));
+  itemEnd('床墊', __mMat, { small: true });
   // 西段上掀蓋 2 片（床墊以西、抽屜深度以南：x 44~mx1、y 577~693）
   const lx1 = PF.x1 + cm2px(6), lx2 = mx1 - cm2px(4), ly1 = PF.y1 + cm2px(61), ly2 = PF.y2 - cm2px(6), lm = (ly1 + ly2) / 2;
   // 檯面（床墊範圍以外）：上掀蓋那塊挖空，掀開才看得到下面的收納格
@@ -1715,6 +1791,9 @@ btnBright.onclick = (e) => {
 };
 document.getElementById('btnMahjong').onclick = (e) => { e.stopPropagation(); setMahjong(!mahjong); };
 setMahjong(false);
+itemFromObject('茶几', coffeeG.g, coffeeG.rects || []);
+itemFromObject('麻將桌', mjFolded.g, mjFolded.rects || []);
+itemFromObject('摺疊椅 x3', mjStored.g, [], { small: true });
 const btnFire = document.getElementById('btnFire');
 btnFire.onclick = (e) => {
   e.stopPropagation();
@@ -1942,9 +2021,9 @@ const ruler = (() => {
   const dotGeo = new THREE.SphereGeometry(0.012, 12, 8);
   const group = new THREE.Group(); scene.add(group);
   const mk = (geo, mat) => { const m = new THREE.Mesh(geo, mat); m.renderOrder = 999; return m; };
-  const cursor = mk(dotGeo, yellow); cursor.visible = false; scene.add(cursor);
+  const cursor = mk(dotGeo, yellow); cursor.visible = false; scene.add(cursor); cursor.userData.noShot = true;
   const preview = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), lineMat);
-  preview.renderOrder = 999; preview.visible = false; preview.frustumCulled = false; scene.add(preview);
+  preview.renderOrder = 999; preview.visible = false; preview.frustumCulled = false; scene.add(preview); preview.userData.noShot = true;
   const hud = document.getElementById('rulerHud'), btn = document.getElementById('btnRuler');
   const rc = new THREE.Raycaster();
   let on = false, a = null, hover = null, t = 0;
@@ -1980,6 +2059,7 @@ const ruler = (() => {
   function setHud(html) { hud.innerHTML = html; hud.style.display = on ? 'block' : 'none'; }
   function set(v) {
     on = v; a = null; cursor.visible = false; preview.visible = false; tape.equip(v);
+    if (v && typeof furn !== 'undefined' && furn.on) furn.set(false);                // 量尺與搬家具二選一
     if (!on) group.clear();
     btn.textContent = `量尺：${on ? '開' : '關'}`; btn.classList.toggle('off', !on);
     const bt = document.getElementById('btnRulerT'), bu = document.getElementById('btnUse');   // 手機：量尺鍵亮起，「開關」鍵改成「放點」
@@ -2017,11 +2097,229 @@ const ruler = (() => {
   return { get on() { return on; }, click, update };
 })();
 let mouseNdc = new THREE.Vector2(9, 9);
+renderer.domElement.addEventListener('pointerdown', (e) => { mouseNdc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); });
 renderer.domElement.addEventListener('pointermove', (e) => { mouseNdc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); });
+const floorRects = [[37.9, 41.3, 634.8, 714.8]];                                   // 搬家具：可以放東西的範圍（室內）
+// ---------- 搬家具 + 背包（G 鍵 / 面板「搬家具」按鈕）----------
+// 搬家具模式：準星（俯瞰為滑鼠）對到家具點一下拿起 → 家具跟著準星在地上移動，地上綠框 = 可以放、紅框 = 會撞到；
+//   靠近牆 / 家具 8cm 內自動貼齊（留 0.5cm），畫面下方顯示到四周的距離；左鍵放下、T 或滾輪轉 90°、X / 右鍵取消（放回原位）、
+//   B 收進背包。背包：畫面下方一排格子（像遊戲快捷欄），按 1~9 或點格子把家具拿出來，再找位置放下
+const furn = (() => {
+  const hud = document.getElementById('furnHud'), bar = document.getElementById('bagBar'), btn = document.getElementById('btnFurn');
+  const rc = new THREE.Raycaster(), floor = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hitP = new THREE.Vector3();
+  const footMat = new THREE.MeshBasicMaterial({ color: 0x4caf50, transparent: true, opacity: 0.35, depthWrite: false, toneMapped: false });
+  const foot = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), footMat);
+  foot.renderOrder = 998; foot.visible = false; scene.add(foot);
+  // 準星 / 滑鼠對到可搬的家具：黃色外框高亮 + 準星變大變黃 + 提示名稱
+  const hl = new THREE.Box3Helper(new THREE.Box3(), 0xffd24a);
+  hl.material.depthTest = false; hl.material.toneMapped = false; hl.renderOrder = 999; hl.visible = false; scene.add(hl);
+  hl.userData.noShot = foot.userData.noShot = true;
+  let hoverIt = null;
+  const setCross = (hot) => cross.classList.toggle('hot', hot);
+  function hover(it) {
+    if (it === hoverIt) return;
+    hoverIt = it; hl.visible = !!it; setCross(!!it);
+    if (it) { hl.box.setFromObject(it.pivot); hl.box.expandByScalar(0.015); setHud(`點一下拿起：${it.name}`); }
+    else setHud(on ? (IS_TOUCH ? '搬家具：點家具拿起，再點地上放下' : '搬家具：對準家具點一下拿起（B 收進背包、1~9 從背包拿出）') : '');
+  }
+  const bag = [];
+  let on = false, held = null, from = null, ok = false, q = 0, t = 0, last = null;
+  const rcDown = new THREE.Raycaster(), DOWN = new THREE.Vector3(0, -1, 0);
+  const isHeldPart = (o) => { for (; o; o = o.parent) if (o === held?.pivot) return true; return false; };
+  function surfaceAt(cx, cy) {                                                         // 小物件：找正下方第一個實體表面（桌面 / 床架 / 地板）
+    rcDown.set(new THREE.Vector3(px2m(cx - ORIGIN.x), 2.6, px2m(cy - ORIGIN.y)), DOWN);
+    rcDown.camera = camera;                                                          // 場景裡有 Sprite（樑標籤），raycast 需要相機
+    for (const h of rcDown.intersectObjects(scene.children, true)) {
+      const o = h.object;
+      if (!o.isMesh || !shown(o) || o.userData.noShot || o.material.transparent || isHeldPart(o) || o.material.depthTest === false) continue;
+      if (o.material.side === THREE.DoubleSide && o.geometry?.type === 'PlaneGeometry') continue;   // 光暈貼片
+      return h.point.y;
+    }
+    return 0;
+  }
+  const pivotTo = (it, cx, cy, yWorld) => { const pw = it.parent.getWorldPosition(new THREE.Vector3()); it.pivot.position.set(px2m(cx - ORIGIN.x) - pw.x, yWorld - it.baseY - pw.y, px2m(cy - ORIGIN.y) - pw.z); };
+  const SNAP = cm2px(20), GAP = cm2px(0.3), ALIGN = cm2px(6), cm = (v) => Math.round(v * CM_PER_PX);   // 磁吸：20cm 內吸過去貼齊（留 3mm）、邊線差 6cm 內自動對齊
+  const isOwn = (it, r) => it.rects.some(e => e.r === r);
+  const union = (rs) => rs.reduce((u, r) => [Math.min(u[0], r[0]), Math.min(u[1], r[1]), Math.max(u[2], r[2]), Math.max(u[3], r[3])], [1e9, 1e9, -1e9, -1e9]);
+  const others = (it) => solids.filter(r => r[0] > -9000 && !r.gate && !isOwn(it, r));
+  function setHud(html) { hud.innerHTML = html; hud.style.display = html ? 'block' : 'none'; }
+  function renderBar() {
+    bar.innerHTML = '';
+    bar.style.display = on || bag.length ? 'flex' : 'none';
+    for (let i = 0; i < 9; i++) {
+      const it = bag[i], d = document.createElement('div');
+      d.className = 'slot' + (it ? '' : ' empty');
+      d.innerHTML = `<b>${i + 1}</b>${it ? it.name : ''}`;
+      if (it) d.onclick = (e) => { e.stopPropagation(); takeOut(i); };
+      bar.appendChild(d);
+    }
+  }
+  const touchBar = document.getElementById('furnTouch');
+  const syncTouch = () => {
+    touchBar.style.display = IS_TOUCH && held ? 'flex' : 'none';
+    const bt = document.getElementById('btnFurnT'), bu = document.getElementById('btnUse');
+    if (bt) bt.classList.toggle('ready', on);
+    if (bu && IS_TOUCH && !ruler.on) bu.textContent = on ? (held ? '放下' : '拿起') : '開關';
+  };
+  function set(v) {
+    if (!v && held) cancel();
+    if (!v) hover(null);
+    on = v;
+    btn.textContent = `搬家具：${on ? '開' : '關'}`; btn.classList.toggle('off', !on);
+    if (on && ruler.on) document.getElementById('btnRuler').click();
+    setHud(on ? (IS_TOUCH ? '搬家具：點家具拿起，再點地上放下' : '搬家具：對準家具點一下拿起（B 收進背包、1~9 從背包拿出）') : '');
+    renderBar(); syncTouch();
+  }
+  // 依候選中心算碰撞、磁吸（貼牆 / 貼家具 + 邊線對齊）、四周距離
+  function evaluate(it, cx, cy) {
+    const inside = floorRects.some(f => cx > f[0] && cx < f[2] && cy > f[1] && cy < f[3]);
+    if (it.small) return { cx, cy, u: null, g: null, ok: inside, small: true, y: surfaceAt(cx, cy) };
+    const obs = others(it);
+    let rs = it.rects.map(e => itemRect(e.local, cx, cy, q));
+    if (!rs.length) { const h = cm2px(20); rs = [[cx - h, cy - h, cx + h, cy + h]]; }
+    const gaps = (u) => {
+      const g = { E: Infinity, W: Infinity, S: Infinity, N: Infinity };
+      obs.forEach(r => {
+        if (r[1] < u[3] && r[3] > u[1]) { if (r[0] >= u[2] - 0.5) g.E = Math.min(g.E, r[0] - u[2]); if (r[2] <= u[0] + 0.5) g.W = Math.min(g.W, u[0] - r[2]); }
+        if (r[0] < u[2] && r[2] > u[0]) { if (r[1] >= u[3] - 0.5) g.S = Math.min(g.S, r[1] - u[3]); if (r[3] <= u[1] + 0.5) g.N = Math.min(g.N, u[1] - r[3]); }
+      });
+      return g;
+    };
+    const shift = (dx, dy) => { cx += dx; cy += dy; rs = rs.map(r => [r[0] + dx, r[1] + dy, r[2] + dx, r[3] + dy]); };
+    let u = union(rs), g = gaps(u), dx = 0, dy = 0, snapped = [];
+    // 1. 貼合：20cm 內往最近的牆 / 家具吸過去
+    if (g.E < SNAP && g.E > GAP && g.E <= g.W) { dx = g.E - GAP; snapped.push('東'); } else if (g.W < SNAP && g.W > GAP) { dx = -(g.W - GAP); snapped.push('西'); }
+    if (g.S < SNAP && g.S > GAP && g.S <= g.N) { dy = g.S - GAP; snapped.push('南'); } else if (g.N < SNAP && g.N > GAP) { dy = -(g.N - GAP); snapped.push('北'); }
+    if (g.E <= GAP) snapped.push('東'); if (g.W <= GAP) snapped.push('西'); if (g.S <= GAP) snapped.push('南'); if (g.N <= GAP) snapped.push('北');
+    if (dx || dy) { shift(dx, dy); u = union(rs); }
+    // 2. 對齊：貼著（或很靠近）的鄰居，邊線差 6cm 內就對齊（例如兩張椅子前緣、櫃子側邊）
+    let ax = 0, ay = 0, best = { x: ALIGN, y: ALIGN };
+    obs.forEach(r => {
+      const nearY = r[1] < u[3] + SNAP && r[3] > u[1] - SNAP, nearX = r[0] < u[2] + SNAP && r[2] > u[0] - SNAP;
+      if (nearY && !(r[1] < u[3] && r[3] > u[1])) [[r[0], u[0]], [r[2], u[2]], [r[0], u[2]], [r[2], u[0]]].forEach(([a, b]) => { const d = a - b; if (Math.abs(d) < best.x && Math.abs(d) > 0.3) { best.x = Math.abs(d); ax = d; } });
+      if (nearX && !(r[0] < u[2] && r[2] > u[0])) [[r[1], u[1]], [r[3], u[3]], [r[1], u[3]], [r[3], u[1]]].forEach(([a, b]) => { const d = a - b; if (Math.abs(d) < best.y && Math.abs(d) > 0.3) { best.y = Math.abs(d); ay = d; } });
+    });
+    if (!dx && ax) { shift(ax, 0); snapped.push('對齊'); } if (!dy && ay) { shift(0, ay); if (!snapped.includes('對齊')) snapped.push('對齊'); }
+    u = union(rs); g = gaps(u);
+    const seat = it.rects.some(e => e.r.seat), under = it.rects.some(e => e.r.under);
+    const hit = rs.some(a => obs.some(r => !(seat && r.under) && !(under && r.seat) && a[0] < r[2] - 0.3 && a[2] > r[0] + 0.3 && a[1] < r[3] - 0.3 && a[3] > r[1] + 0.3));   // 椅子 / 凳子可以塞進桌下
+    return { cx, cy, u, g, ok: !hit && inside, snapped: [...new Set(snapped)] };
+  }
+  function pickItem(ndc) {
+    rc.setFromCamera(ndc, camera); rc.far = mode === 'walk' ? 6 : 200;
+    for (const h of rc.intersectObjects(scene.children, true)) {
+      if (!h.object.isMesh || !shown(h.object) || h.object === foot) continue;
+      for (let o = h.object; o; o = o.parent) if (o.userData.item) return o.userData.item;
+      if (!h.object.material.transparent) return null;
+    }
+    return null;
+  }
+  function grab(it, fromBag) {
+    hover(null);
+    recordOff(it);
+    held = it; q = it.q; from = fromBag ? null : [it.cx, it.cy, it.q, it.pivot.getWorldPosition(new THREE.Vector3()).y + it.baseY];
+    hideItemRects(it);
+    it.pivot.visible = true;
+    foot.visible = true;
+    setHud(`拿著：${it.name}`);
+    syncTouch();
+  }
+  function drop() {
+    if (!held || !last || !last.ok) return;
+    placeItem(held, last.cx, last.cy, q, held.small ? last.y : null);
+    held = null; foot.visible = false;
+    set(false);                                                                        // 放好就自動關掉搬家具模式，點擊恢復成開門 / 拉椅子
+  }
+  function cancel() {
+    if (!held) return;
+    if (from) placeItem(held, from[0], from[1], from[2], held.small ? from[3] : null);
+    else { bag.push(held); held.pivot.visible = false; }                                 // 從背包拿出來的 → 放回背包
+    held = null; foot.visible = false; renderBar(); syncTouch();
+    setHud(on ? '搬家具：對準家具點一下拿起（B 收進背包、1~9 從背包拿出）' : '');
+  }
+  function store() {
+    if (!held) return;
+    if (bag.length >= 9) { setHud('背包滿了（最多 9 件）'); return; }
+    held.pivot.visible = false; held.stored = true;
+    bag.push(held); held = null; foot.visible = false; renderBar(); syncTouch();
+    renderer.shadowMap.needsUpdate = true;
+    setHud('收進背包了：按 1~9 或點下方格子拿出來');
+  }
+  function takeOut(i) {
+    if (held || !bag[i]) return;
+    if (!on) set(true);
+    const it = bag.splice(i, 1)[0]; it.stored = false;
+    grab(it, true); renderBar();
+  }
+  function click(ndc) {
+    if (held) { t = 1; update(ndc, 0); drop(); return; }                                // 先依點擊位置（手機：點的地方）算一次再放下
+    const it = pickItem(ndc);
+    if (it) grab(it, false);
+  }
+  // 平常模式：準星 / 滑鼠對到門、櫃門、抽屜、椅子也用同一個黃框高亮
+  let hoverM = null, ht = 0;
+  function hoverMover(ndc, dt) {
+    ht += dt; if (ht < 0.1) return; ht = 0;
+    const m = ruler.on || (mode === 'walk' && !walk.isLocked && !IS_TOUCH) ? null : pick(ndc, mode === 'walk' ? (IS_TOUCH ? 3.5 : 3.2) : 100);
+    setCross(!!m);
+    if (IS_TOUCH) btnUse.classList.toggle('ready', !!m);
+    if (m === hoverM) { if (m) { hl.box.setFromObject(m.pivot); hl.box.expandByScalar(0.01); } return; }   // 門在動時外框跟著
+    hoverM = m; hl.visible = !!m;
+    if (m) { hl.box.setFromObject(m.pivot); hl.box.expandByScalar(0.01); }
+  }
+  function update(ndc, dt) {
+    if (!held) {
+      if (!on) { if (hoverIt) hover(null); hoverMover(ndc, dt); return; }
+      if (hoverM) { hoverM = null; hl.visible = false; }
+      t += dt; if (t < 0.08) return; t = 0;
+      hover(pickItem(ndc));
+      return;
+    }
+    t += dt; if (t < 0.03) return; t = 0;
+    rc.setFromCamera(ndc, camera);
+    if (!rc.ray.intersectPlane(floor, hitP)) return;
+    if (mode === 'walk' && hitP.distanceTo(camera.position) > 5) return;
+    const r = evaluate(held, hitP.x * 100 / CM_PER_PX + ORIGIN.x, hitP.z * 100 / CM_PER_PX + ORIGIN.y);
+    last = r;
+    pivotTo(held, r.cx, r.cy, (r.small ? r.y : 0) + (r.small ? 0.015 : 0.04));        // 拿起來時微微離地（小物件貼著下面的表面）
+    held.pivot.rotation.y = q * Math.PI / 2;
+    const tips = held.small ? '' : '';
+    if (r.small) foot.visible = false;
+    else {
+      foot.visible = true;
+      foot.position.set(px2m((r.u[0] + r.u[2]) / 2 - ORIGIN.x), 0.006, px2m((r.u[1] + r.u[3]) / 2 - ORIGIN.y));
+      foot.scale.set(px2m(r.u[2] - r.u[0]), 1, px2m(r.u[3] - r.u[1]));
+      footMat.color.set(!r.ok ? 0xe53935 : r.snapped.length ? 0x29b6f6 : 0x4caf50);   // 紅 = 撞到、藍 = 磁吸貼齊、綠 = 可以放
+    }
+    const f = (v) => v === Infinity ? '—' : `${cm(v)}`;
+    const info = r.small ? `<br><span>放在${r.y > 0.05 ? `離地 ${Math.round(r.y * 100)}cm 的表面上` : '地板上'}</span>` : `${r.snapped.length ? `　<span style="color:#7fd3ff">磁吸：${r.snapped.join('、')}</span>` : ''}<br><span>北 ${f(r.g.N)}｜南 ${f(r.g.S)}｜西 ${f(r.g.W)}｜東 ${f(r.g.E)} cm</span>`;
+    setHud(`拿著：${held.name}${r.ok ? '' : '　<span style="color:#ff7b7b">這裡放不下</span>'}${info}${IS_TOUCH ? '<br><small>點畫面放下｜右側：轉 / 收 / 取消</small>' : '<br><small>左鍵放下｜T / 滾輪轉 90°｜B 收進背包｜X / 右鍵取消</small>'}`);
+  }
+  btn.onclick = (e) => { e.stopPropagation(); set(!on); };
+  document.getElementById('btnBag').onclick = (e) => { e.stopPropagation(); if (held) store(); else { bar.style.display = bar.style.display === 'flex' ? 'none' : 'flex'; if (bar.style.display === 'flex') renderBar(); } };
+  addEventListener('keydown', (e) => {
+    if (e.code === 'KeyG' && !e.repeat) set(!on);
+    if (!on && !/^Digit[1-9]$/.test(e.code)) return;
+    if (e.code === 'KeyT' && held && !e.repeat) q = (q + 1) % 4;
+    if (e.code === 'KeyB' && !e.repeat) store();
+    if (e.code === 'KeyX' && held) cancel();
+    if (/^Digit[1-9]$/.test(e.code) && !e.repeat && bag.length) takeOut(+e.code.slice(5) - 1);
+  });
+  addEventListener('wheel', (e) => { if (held) { q = (q + (e.deltaY > 0 ? 1 : 3)) % 4; } }, { passive: true });
+  renderer.domElement.addEventListener('contextmenu', (e) => { if (held) { e.preventDefault(); cancel(); } });
+  const tap = (el, fn) => el.addEventListener(IS_TOUCH ? 'touchstart' : 'click', (e) => { e.preventDefault(); e.stopPropagation(); fn(); }, { passive: false });
+  touchBar.querySelectorAll('button').forEach(b => tap(b, () => { if (b.dataset.a === 'rot' && held) q = (q + 1) % 4; if (b.dataset.a === 'store') store(); if (b.dataset.a === 'cancel') cancel(); }));
+  const bft = document.getElementById('btnFurnT'); if (bft) tap(bft, () => set(!on));
+  if (IS_TOUCH) bar.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+  renderBar();
+  return { get on() { return on; }, get holding() { return !!held; }, get last() { return last; }, click, update, set };
+})();
 function interact(ndc, far) {
+  if (furn.on) { furn.click(ndc); return; }                                           // 搬家具模式：點擊 = 拿起 / 放下
   if (ruler.on) { ruler.click(ndc); return; }                                         // 量尺開啟時：點擊 = 放量測點
   const m = pick(ndc, far);
-  if (m) { m.open = !m.open; syncDoorsBtn(); }
+  if (m && m.stops) m.si = (m.si + 1) % m.stops.length;
+  else if (m) { m.open = !m.open; syncDoorsBtn(); }
 }
 btnDoors.onclick = (e) => {
   e.stopPropagation();
@@ -2182,7 +2480,7 @@ function tick() {
     camera.position.y = eyeY + jumpY;
     // 準星對到可開關的櫃門時變色提示
     hoverT += dt;
-    if (hoverT > 0.15) {                             // 準星對到可開關的東西：準星變黃，手機的「開關」鍵也亮起
+    if (false) {                                     // 準星對到可開關的東西：改由 furn.hoverMover 處理（黃框高亮 + 準星變黃，俯瞰模式也有）
       hoverT = 0;
       const target = pick(CENTER, IS_TOUCH ? 3.5 : 3.2);
       cross.style.background = target ? '#ffd24a' : 'rgba(255,255,255,.7)';
@@ -2191,9 +2489,13 @@ function tick() {
   }
   if (orbit.enabled) orbit.update();
   ruler.update(mode === 'walk' ? CENTER : mouseNdc, dt);
+  furn.update(mode === 'walk' ? CENTER : mouseNdc, dt);
   tape.frame(dt, mode === 'walk');
+  const shotHide = shotPending ? scene.children.filter(o => o.userData.noShot && o.visible) : [];   // 截圖這一幀：藏起高亮框 / 落點框 / 量尺游標和手
+  shotHide.forEach(o => { o.visible = false; });
   renderer.render(scene, camera);
-  tape.draw();
+  if (!shotPending) tape.draw();
+  shotHide.forEach(o => { o.visible = true; });
   if (shotPending) {                                                     // 截圖：剛畫完這一幀就讀畫布（不用開 preserveDrawingBuffer）
     shotPending = false;
     renderer.domElement.toBlob(b => {
