@@ -23,9 +23,27 @@
     position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
     color: #fff; font-size: 18px; pointer-events: none; text-shadow: 0 0 6px #000;
   }
+  #furnHud { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); padding: 6px 12px; border-radius: 8px; background: rgba(20,22,28,.78); color: #ffd24a; font: 600 15px/1.45 system-ui, sans-serif; text-align: center; display: none; pointer-events: none; z-index: 20; }
+  #furnHud span { color: #e8e2d6; font-weight: 400; font-size: 13px; } #furnHud small { color: #aaa; font-weight: 400; }
+  #bagBar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); display: none; gap: 6px; z-index: 21; }
+  #bagBar .slot { width: 64px; height: 64px; border-radius: 8px; border: 2px solid rgba(255,255,255,.35); background: rgba(20,22,28,.7); color: #f3efe6; font: 600 12px/1.25 system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; cursor: pointer; padding: 2px; box-sizing: border-box; }
+  #bagBar .slot b { color: #ffd24a; font-size: 11px; }
+  #bagBar .slot.empty { opacity: .45; cursor: default; }
+  #furnTouch { position: fixed; right: calc(18px + env(safe-area-inset-right)); bottom: calc(262px + env(safe-area-inset-bottom)); display: none; flex-direction: column; gap: 10px; z-index: 22; }
+  #furnTouch button { width: 64px; height: 52px; border-radius: 14px; border: 2px solid rgba(255,210,74,.7); background: rgba(20,22,28,.75); color: #ffd24a; font: 700 16px system-ui, sans-serif; }
+  @media (pointer: coarse) {                                                       /* 手機：背包快捷欄移到上方（下方是搖桿與按鍵），格子縮小 */
+    #bagBar { top: calc(10px + env(safe-area-inset-top)); bottom: auto; gap: 4px; }
+    #bagBar .slot { width: 36px; height: 40px; font-size: 9px; border-radius: 6px; }
+    #furnHud { top: calc(58px + env(safe-area-inset-top)); bottom: auto; font-size: 13px; max-width: 90vw; }
+  }
   #rulerHud { position: fixed; left: 50%; top: calc(50% + 22px); transform: translateX(-50%); padding: 6px 12px; border-radius: 8px; background: rgba(20,20,22,.75); color: #ffd24a; font: 600 15px/1.45 system-ui, sans-serif; text-align: center; display: none; pointer-events: none; white-space: nowrap; z-index: 20; }
   #rulerHud span { color: #e8e2d6; font-weight: 400; font-size: 13px; } #rulerHud small { color: #aaa; font-weight: 400; }
-  #cross { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: rgba(255,255,255,.7); display: none; }
+  /* 準星：白色十字 + 深色描邊（白牆上也看得到）；對到可互動 / 可搬的東西 → 變黃、外圈亮起 */
+  #cross { position: fixed; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px; display: none; pointer-events: none; z-index: 15; }
+  #cross::before, #cross::after { content: ''; position: absolute; left: 50%; top: 50%; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.55); transform: translate(-50%, -50%); }
+  #cross::before { width: 14px; height: 2px; } #cross::after { width: 2px; height: 14px; }
+  #cross.hot { border: 2px solid #ffd24a; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0,0,0,.45), inset 0 0 0 1px rgba(0,0,0,.25); box-sizing: border-box; }
+  #cross.hot::before, #cross.hot::after { background: #ffd24a; }
   /* ---------- 手機 / 平板觸控 ---------- */
   /* 畫布固定鋪滿整個螢幕（含 iPhone 瀏海 / 手勢條區域），避免橫向時出現黑邊 */
   canvas { touch-action: none; position: fixed; left: 0; top: 0; display: block; width: 100vw !important; height: 100vh !important; height: 100dvh !important; }
@@ -35,7 +53,8 @@
   #joyBase { position: fixed; left: calc(22px + env(safe-area-inset-left)); bottom: calc(22px + env(safe-area-inset-bottom)); width: 124px; height: 124px; border-radius: 50%;
     background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.35); touch-action: none; z-index: 20; }
   #joyStick { position: absolute; left: 37px; top: 37px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,.6); pointer-events: none; }
-  #touchBtns { position: fixed; right: calc(18px + env(safe-area-inset-right)); bottom: calc(26px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: 64px 64px; grid-template-areas: '. use' '. ruler' 'jump posture'; gap: 12px; z-index: 20; }
+  #touchBtns { position: fixed; right: calc(18px + env(safe-area-inset-right)); bottom: calc(26px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: 64px 64px; grid-template-areas: '. use' 'furn ruler' 'jump posture'; gap: 12px; z-index: 20; }
+  #btnFurnT { grid-area: furn; }
   #btnUse { grid-area: use; } #btnRulerT { grid-area: ruler; } #btnJump { grid-area: jump; } #btnPosture { grid-area: posture; }   /* 右排：開關 / 量尺 / 姿勢；跳在姿勢左邊 */
   #touchBtns button.ready { background: rgba(255,210,74,.9); color: #222; border-color: #ffd24a; }
   #touchBtns button { width: 64px; height: 64px; border-radius: 50%; border: 2px solid rgba(255,255,255,.4); background: rgba(20,22,28,.6);
@@ -61,6 +80,8 @@
     <button id="btnShot">截圖</button>
     <button id="btnRuler" class="off">量尺：關</button>
     <button id="btnRulerClear">清除量測</button>
+    <button id="btnFurn" class="off">搬家具：關</button>
+    <button id="btnBag">背包</button>
     <button id="btnLabel" class="off" style="display:none">樑標籤：關</button>
     <button id="btnShowcase">櫃體：方案 1</button>
     <button id="btnKCeil">廚房天花：270 設計師</button>
@@ -73,7 +94,6 @@
     <button id="btnQuality">畫質：標準</button>
     <button id="btnBed" class="off">床位：窗側</button>
     <button id="btnFrame">床架：有</button>
-    <button id="btnMat2">次臥床墊：有</button>
   </div>
   <div id="postures" style="margin-top:6px">視角（身高 172cm）：<br>
     <button data-p="0">站立</button><button data-p="1" class="off">坐下</button><button data-p="2" class="off">蹲下</button><button data-p="3" class="off">躺下</button>
@@ -99,9 +119,12 @@
 <div id="hint">點擊畫面進入室內漫遊</div>
 <div id="cross"></div>
 <div id="rulerHud"></div>
+<div id="furnHud"></div>
+<div id="bagBar"></div>
+<div id="furnTouch"><button data-a="rot">轉</button><button data-a="store">收</button><button data-a="cancel">取消</button></div>
 <div id="touchUI">
   <div id="joyBase" class="walkOnly"><div id="joyStick"></div></div>
-  <div id="touchBtns" class="walkOnly"><button id="btnUse">開關</button><button id="btnRulerT">量尺</button><button id="btnJump">跳</button><button id="btnPosture">站</button></div>
+  <div id="touchBtns" class="walkOnly"><button id="btnUse">開關</button><button id="btnRulerT">量尺</button><button id="btnFurnT">搬</button><button id="btnJump">跳</button><button id="btnPosture">站</button></div>
 </div>
 
 <script type="importmap">
@@ -398,6 +421,52 @@ function mover(pivot, apply, meshes, origin) {
   movers.push(m);
   return m;
 }
+// 碰撞矩形的「原位」備份（capture / movable / grabSince 用來還原或加位移）：搬家具時要一起跟著搬，所以集中登記
+const RECT_BASE = new Map();                                                         // r → [原位陣列, ...]
+const addBase = (r, o) => { (RECT_BASE.get(r) || RECT_BASE.set(r, []).get(r)).push(o); };
+// 可搬動的家具（「搬家具」模式 / 背包）：itemMark() 記下起點，蓋完家具後 itemEnd(名稱, mark) 把新增的物件包成一個以中心為軸的群組
+const ITEMS = [];
+const itemMark = () => [scene.children.length, solids.length];
+function itemEnd(name, [n, ns], opt) {
+  const kids = scene.children.slice(n);
+  if (!kids.length) return null;
+  return makeItem(name, kids, scene, solids.slice(ns), opt);
+}
+// 把已經在場景裡的物件（可在任何父群組下，父群組只能平移）包成可搬家具；small = 小物件（杯子、書、床墊）：不檢查碰撞、放下時貼著下面的表面
+function itemFromObject(name, obj, rects = [], opt) { return makeItem(name, [obj], obj.parent, rects, opt); }
+function makeItem(name, kids, parent, rectList, { small = false } = {}) {
+  parent.updateMatrixWorld(true);
+  const b = new THREE.Box3(); kids.forEach(o => b.expandByObject(o));
+  const c = b.getCenter(new THREE.Vector3()), pw = parent.getWorldPosition(new THREE.Vector3());
+  const pivot = new THREE.Group(), inner = new THREE.Group();
+  pivot.position.set(c.x - pw.x, 0, c.z - pw.z); inner.position.set(-(c.x - pw.x), 0, -(c.z - pw.z));
+  kids.forEach(o => inner.add(o)); pivot.add(inner); parent.add(pivot);
+  const cx = c.x * 100 / CM_PER_PX + ORIGIN.x, cy = c.z * 100 / CM_PER_PX + ORIGIN.y;
+  const rects = rectList.map(r => ({ r, local: [r[0] - cx, r[1] - cy, r[2] - cx, r[3] - cy] }));   // 以目前看得到的位置為準
+  const it = { name, pivot, parent, rects, cx, cy, q: 0, stored: false, small, baseY: b.min.y - pw.y, off: rects.map(() => [0, 0]) };
+  pivot.userData.item = it;
+  ITEMS.push(it);
+  return it;
+}
+// 拿起時記下每個碰撞矩形相對「原位備份」的位移（椅子拉出量、整組平移量），放下後原位備份 = 新位置 - 這個位移
+const recordOff = (it) => { it.off = it.rects.map(e => { const ref = (RECT_BASE.get(e.r) || [])[0]; return ref && e.r[0] > -9000 && ref[0] > -9000 ? [e.r[0] - ref[0], e.r[1] - ref[1]] : [0, 0]; }); };
+// 依中心 (cx, cy) px、轉 q 個 90° 算出家具的碰撞矩形（世界 px）
+const qRot = (x, y, q) => { const c = Math.round(Math.cos(q * Math.PI / 2)), s = Math.round(Math.sin(q * Math.PI / 2)); return [x * c + y * s, -x * s + y * c]; };
+const itemRect = (local, cx, cy, q) => { const a = qRot(local[0], local[1], q), b = qRot(local[2], local[3], q); return [Math.min(a[0], b[0]) + cx, Math.min(a[1], b[1]) + cy, Math.max(a[0], b[0]) + cx, Math.max(a[1], b[1]) + cy]; };
+// 把家具放到世界 (cx, cy, q)、地面高 yM（公尺，小物件放在桌面 / 床架上用）
+function placeItem(it, cx, cy, q, yM = null) {
+  it.cx = cx; it.cy = cy; it.q = q;
+  const pw = it.parent.getWorldPosition(new THREE.Vector3());
+  it.pivot.position.set(px2m(cx - ORIGIN.x) - pw.x, yM === null ? 0 : yM - it.baseY - pw.y, px2m(cy - ORIGIN.y) - pw.z);
+  it.pivot.rotation.y = q * Math.PI / 2;
+  it.rects.forEach((e, i) => {
+    const n = itemRect(e.local, cx, cy, q), off = it.off[i] || [0, 0];
+    (RECT_BASE.get(e.r) || []).forEach(bb => { bb[0] = n[0] - off[0]; bb[1] = n[1] - off[1]; bb[2] = n[2] - off[0]; bb[3] = n[3] - off[1]; });
+    n.forEach((v, k) => { e.r[k] = v; });
+  });
+  renderer.shadowMap.needsUpdate = true;
+}
+const hideItemRects = (it) => it.rects.forEach(e => { e.r[0] = e.r[1] = e.r[2] = e.r[3] = -9999; });
 // 整組搬移：build() 期間加進場景的物件與碰撞矩形收成一組，回傳 set(dxPx, dyPx) 把整組平移到指定偏移
 function capture(build) {
   const n = scene.children.length, ns = solids.length;
@@ -406,6 +475,7 @@ function capture(build) {
   scene.children.slice(n).forEach(o => g.add(o));
   scene.add(g);
   const rects = solids.slice(ns).map(r => [r, r.slice(0, 4)]);
+  rects.forEach(([r, o]) => addBase(r, o));
   return (dx, dy) => {
     g.position.set(px2m(dx), 0, px2m(dy));
     rects.forEach(([r, o]) => { r[0] = o[0] + dx; r[2] = o[2] + dx; r[1] = o[1] + dy; r[3] = o[3] + dy; });
@@ -420,6 +490,7 @@ function movable(build, dxCm, dyCm, stops) {
   scene.children.slice(n).forEach(o => g.add(o));
   scene.add(g);
   const rects = solids.slice(ns).map(r => [r, r.slice(0, 4)]);
+  rects.forEach(([r, o]) => addBase(r, o));
   const dx = dxCm / CM_PER_PX, dy = dyCm / CM_PER_PX, meshes = [];
   g.traverse(o => { if (o.isMesh) meshes.push(o); });
   const m = mover(g, k => {
@@ -688,6 +759,7 @@ function grabSince(n, ns) {
   scene.children.slice(n).forEach(o => g.add(o));
   scene.add(g);
   const rects = solids.slice(ns).map(r => [r, r.slice(0, 4)]);
+  rects.forEach(([r, o]) => addBase(r, o));
   return { g, show(on) { g.visible = on; rects.forEach(([r, o]) => o.forEach((v, i) => { r[i] = on ? v : -9999; })); } };
 }
 // 矮櫃做兩個長度：一般（柱 ~ 右側高櫃 x 377）與「只有下櫃」方案（柱 ~ 廚房高櫃 x 437，拿掉右側高櫃後補滿）
@@ -837,8 +909,8 @@ const tallCab = group3(() => {                                                  
 });
 
 // ---------- 玻璃鋁框展示櫃（可切換方案比較） ----------
-// 方案 1：電視上方系統板吊櫃（非展示櫃），灰色門板與下方矮櫃同色，寬同電視區、高 60cm（185~245cm），深 35cm、3 門（與下方矮櫃門片分割對齊），
-//         門片比框面內退約 9cm，讓柱/包樑/高櫃的框仍然清楚，櫃體也不會顯得厚重。
+// 方案 1：電視上方系統板吊櫃（非展示櫃），灰色門板與下方矮櫃同色，寬同電視區、高 60cm（185~245cm），深 43cm（門面齊展示櫃）、3 門（與下方矮櫃門片分割對齊），
+//         門片正面與右側展示櫃 / 高櫃、下方矮櫃切平（距牆 43cm），比 G4 包樑面退 2cm。
 // 方案 2：右側高櫃上段（118cm 以上，與微波爐上緣齊）改為玻璃鋁框門，內配 3 片木作層板（板下燈條），四格等高（淨高約 29cm）。
 // 共通：2cm 鐵灰鋁框 + 清玻璃、淺色內襯、櫃內頂部 LED 燈條（以自發光模擬，不增加即時光源）。
 const showcase = {
@@ -879,7 +951,7 @@ const woodShelf = (x1, x2, depthCm, z, group) => {
 // 方案 1
 const showcase1 = new THREE.Group();
 scene.add(showcase1);
-const SC1 = { z0: BEAM_BOTTOM - 60, z1: BEAM_BOTTOM, d: 35 };
+const SC1 = { z0: BEAM_BOTTOM - 60, z1: BEAM_BOTTOM, d: TV_D };   // 門片正面與右側展示櫃 / 高櫃、下方矮櫃切平（距牆 43cm）
 box(TV.x1, WALL_Y, TV.x2, fy(SC1.d), SC1.z0, SC1.z1, cab.greige, { group: showcase1 });
 fronts(TV.x1, TV.x2, SC1.d, SC1.z0, SC1.z1, 3, cab.greige, showcase1);
 // 吊櫃底部燈條（靠後方牆面，距牆 3cm，往下洗牆、打亮電視上緣；從正面不易直視光源）＋ 背牆光暈（不另開即時光源）
@@ -1516,6 +1588,7 @@ const SOFA = { cx: tvCx, back: 527 - cm2px(2), w: 212, d: 112 };
 const fabric = (hex) => new THREE.MeshStandardMaterial({ map: makeConcreteTexture(), color: hex, roughness: 0.95 }); // 斑駁紋模擬貓抓布
 const camel = fabric(0xa8845f);                                                   // 型錄淺駝棕，室內暖光下會再偏暖，底色刻意降低飽和
 const camelDark = fabric(0x8f7050);
+const __mSofa = itemMark();
 {
   const yb = SOFA.back, yf = yb - cm2px(SOFA.d);
   const x0 = SOFA.cx - cm2px(SOFA.w / 2), modW = cm2px(SOFA.w / 2), seam = cm2px(0.6);
@@ -1537,6 +1610,7 @@ const camelDark = fabric(0x8f7050);
     softBox(armX1, yf, armX2, yb, LEG, ARM_H, 5, camel);                             // 寬扶手（落地至腳高）
   });
 }
+itemEnd('沙發', __mSofa);
 
 // 餐桌：IKEA STENÅRED 140 x 75cm、桌高 74cm（仿石紋白色石英石桌面 + 竹製桌框與外斜錐腳），短邊靠 J5 下方牆，長邊南北向
 // 西側（沙發側）2 張無扶手餐椅、東側（走道側）1 張長凳，長凳可完全收進桌下，不擋走道
@@ -1549,7 +1623,7 @@ const cream = fabric(0xe8e0d0);                                                 
   const bamboo = new THREE.MeshStandardMaterial({ map: makeGrainTexture('#d6a873', '150,100,52', { n: 120, alpha: 0.22 }), roughness: 0.55 });
   const quartz = new THREE.MeshStandardMaterial({ map: makeConcreteTexture(), color: 0xfbfaf6, roughness: 0.25 });
   softBox(x1, y1, x2, y2, 72, 74, 0.6, quartz);                          // 石英石桌面 2cm（小圓角）
-  solids.push([x1, y1, x2, y2]);
+  solids.push(Object.assign([x1, y1, x2, y2], { under: true }));   // under：桌面下方可塞椅子 / 長凳（搬家具時不算撞到）
   const ins = cm2px(5), T = cm2px(2.2);
   box(x1 + ins, y1 + ins, x1 + ins + T, y2 - ins, 64, 72, bamboo);                   // 竹製牙板（四邊，高 8cm）
   box(x2 - ins - T, y1 + ins, x2 - ins, y2 - ins, 64, 72, bamboo);
@@ -1635,12 +1709,13 @@ ISL.x2 = ISL.x1 + cm2px(ISL.d); ISL.bw = ISL.x1 + cm2px((ISL.d - ISL.body) / 2);
 const DT = { x1: ISL.xb, x2: ISL.xb + cm2px(140), y1: ISL.y1, y2: ISL.y1 + cm2px(75), h: 74 };   // 樣式同原本 STENÅRED（石英石桌面 + 竹框 + 外斜錐腳），140 x 75
 const newDining = group3(() => {
   // 中島：整塊石材量體
+  const __mIsl = itemMark();
   {
     const oakL = new THREE.MeshStandardMaterial({ map: makeGrainTexture('#d2b48a', '140,104,64', { n: 120, alpha: 0.2 }), roughness: 0.6 });
     const marble = new THREE.MeshStandardMaterial({ map: makeConcreteTexture(), color: 0xfafaf8, roughness: 0.2 });
     const alum = new THREE.MeshStandardMaterial({ color: 0xc9ccd0, roughness: 0.3, metalness: 0.7 });
     const g1 = cm2px(1), yb1 = ISL.y1 + g1, yb2 = ISL.y2 - g1, xw = ISL.bw, xf = ISL.xb, T = cm2px(1.6);   // xw = 櫃體背面（西）、xf = 正面（東）
-    solids.push([ISL.x1, ISL.y1, ISL.x2, ISL.y2]);
+    solids.push(Object.assign([ISL.x1, ISL.y1, ISL.x2, ISL.y2], { under: true }));   // 檯面外伸 10cm 下方可塞椅子
     box(ISL.x1, ISL.y1, ISL.x2, ISL.y2, 94, 97, marble);                                   // 白色大理石紋桌面 120 x 60，置中（前後各外伸 10cm）
     box(xw, yb1, xf, yb1 + T, 0, 94, oakL); box(xw, yb2 - T, xf, yb2, 0, 94, oakL);         // 側板
     box(xw, yb1, xw + T, yb2, 0, 94, oakL);                                                // 背板（朝西、靠沙發）
@@ -1656,13 +1731,15 @@ const newDining = group3(() => {
     [0.62, 0.72].forEach(f => cyl(xf - cm2px(18), yb1 + (yb2 - yb1) * f, 4, 76, 86, new THREE.MeshStandardMaterial({ color: 0xf0ede6, roughness: 0.5 })));
     [0.18, 0.28, 0.38].forEach(f => cyl(xf - cm2px(18), yb1 + (yb2 - yb1) * f, 4.5, 76, 90, new THREE.MeshStandardMaterial({ color: 0xd8c9a8, transparent: true, opacity: 0.85, roughness: 0.2 })));
   }
+  itemEnd('中島', __mIsl);
+  const __mTbl = itemMark();
   // 餐桌：同原本 STENÅRED 樣式（石英石桌面 2cm + 竹製牙板 + 4 支外斜錐腳），長邊東西向，西端貼中島側面
   {
     const { x1, x2, y1, y2 } = DT;
     const bamboo = new THREE.MeshStandardMaterial({ map: makeGrainTexture('#d6a873', '150,100,52', { n: 120, alpha: 0.22 }), roughness: 0.55 });
     const quartz = new THREE.MeshStandardMaterial({ map: makeConcreteTexture(), color: 0xfbfaf6, roughness: 0.25 });
     softBox(x1, y1, x2, y2, 72, 74, 0.6, quartz);
-    solids.push([x1, y1, x2, y2]);
+    solids.push(Object.assign([x1, y1, x2, y2], { under: true }));   // under：桌面下方可塞椅子 / 長凳（搬家具時不算撞到）
     const ins = cm2px(5), T = cm2px(2.2);
     box(x1 + ins, y1 + ins, x1 + ins + T, y2 - ins, 64, 72, bamboo);
     box(x2 - ins - T, y1 + ins, x2 - ins, y2 - ins, 64, 72, bamboo);
@@ -1681,12 +1758,13 @@ const newDining = group3(() => {
       m.castShadow = true; scene.add(m);
     });
   }
-  // 桌上：玻璃杯 x2 + 一疊書
+  itemEnd('餐桌', __mTbl);
+  // 桌上：玻璃杯 x2 + 一疊書（各自可搬 / 收進背包）
   const glass = new THREE.MeshStandardMaterial({ color: 0xdfe8ea, transparent: true, opacity: 0.35, roughness: 0.05 });
-  [[DT.x1 + cm2px(20), DT.y1 + cm2px(18)], [DT.x2 - cm2px(16), DT.y1 + cm2px(18)]].forEach(([gx, gy]) => cyl(gx, gy, 3.5, DT.h, DT.h + 9, glass));
-  box(DT.x1 + cm2px(38), DT.y1 + cm2px(12), DT.x1 + cm2px(62), DT.y1 + cm2px(30), DT.h, DT.h + 4, new THREE.MeshStandardMaterial({ color: 0xf2efe8, roughness: 0.8 }));
+  [[DT.x1 + cm2px(20), DT.y1 + cm2px(18)], [DT.x2 - cm2px(16), DT.y1 + cm2px(18)]].forEach(([gx, gy]) => { const mk = itemMark(); cyl(gx, gy, 3.5, DT.h, DT.h + 9, glass); itemEnd('玻璃杯', mk, { small: true }); });
+  { const mk = itemMark(); box(DT.x1 + cm2px(38), DT.y1 + cm2px(12), DT.x1 + cm2px(62), DT.y1 + cm2px(30), DT.h, DT.h + 4, new THREE.MeshStandardMaterial({ color: 0xf2efe8, roughness: 0.8 })); itemEnd('書', mk, { small: true }); }
   // 北側餐椅 x2：面朝南（椅背在北、靠廚房），前緣略收入桌下；點擊往北拉出 35cm
-  [-0.27, 0.27].forEach(f => movable(() => {
+  [-0.27, 0.27].forEach(f => { const mk = itemMark(); movable(() => {
     const cx = (DT.x1 + DT.x2) / 2 + (DT.x2 - DT.x1) * f, W = cm2px(49.5), D = cm2px(54.2), L = cm2px(3.6);
     const yf = DT.y1 + cm2px(10), yb = yf - D, x1 = cx - W / 2, x2 = cx + W / 2;
     box(x1, yb, x2, yf, 36, 39, beech, { collide: true });
@@ -1697,9 +1775,10 @@ const newDining = group3(() => {
     box(x1 + L, yb - cm2px(0.5), x2 - L, yb + cm2px(2.5), 62, 77.7, beech);
     softBox(x1 + L, yb + cm2px(1), x2 - L, yb + cm2px(4), 48, 74, 1.5, nsfBeige);
     [[x1, x1 + L], [x2 - L, x2]].forEach(([a1, a2]) => box(a1, yb, a2, yf, 12, 14.5, beech));
-  }, 0, -35, CHAIR_STOPS));
+  }, 0, -35, CHAIR_STOPS); itemEnd('餐椅', mk); });
   // 南側長凳 110cm（原本那張 B-34 110）：預設貼南牆（離牆 1cm），坐下時背靠牆；凳面前緣離桌邊約 5cm，從東端坐進去
   // 點一下整張推進桌下收起（離桌南緣 3cm），再點一下回到貼牆
+  const __mBench = itemMark();
   movable(() => {
     const Lb = cm2px(110), D = cm2px(40.1), cx = (DT.x1 + DT.x2) / 2, x1 = cx - Lb / 2, x2 = cx + Lb / 2, y2 = 527 - cm2px(1), y1 = y2 - D, L = cm2px(4);
     box(x1, y1, x2, y2, 37, 40, beech, { collide: true });
@@ -1709,6 +1788,7 @@ const newDining = group3(() => {
       .forEach(([a, b]) => box(a, b, a + L, b + L, 0, 37, beech));
     [x1 + cm2px(3), x2 - cm2px(3) - L].forEach(a => box(a, y1 + cm2px(2), a + L, y2 - cm2px(2), 12, 15, beech));
   }, 0, -((527 - cm2px(1)) - (DT.y2 - cm2px(3))) * CM_PER_PX);
+  itemEnd('長凳', __mBench);
 
 });
 // 餐桌方案切換：0 = 原本（STENÅRED 南北向）、1 = 中島 + 75cm 餐桌
@@ -1811,6 +1891,8 @@ let secondMattress, bedHeadboard, colWrap = [], bedMove, nightMove, bagMove, bed
   bedTopG = new THREE.Group(); scene.children.slice(nT).forEach(o => bedTopG.add(o)); scene.add(bedTopG);   // 床墊 + 寢具（無床架時整組下降 20cm）
   });
 }
+itemFromObject('床架', bedFrameG, [bedSolid]);
+itemFromObject('床墊', bedTopG, [], { small: true });
 
 // 臥室窗簾：灰色上下雙開風琴簾（Top-down / Bottom-up），裝在窗簾盒內（W5、W1 主臥；W2 次臥）
 // 窗簾盒：W5、W1 上方本來就有 G2 / B5 包樑（凸出約 55cm、下緣 245cm），直接當窗簾盒，底部靠牆留 12cm 暗藏軌道槽；
@@ -1889,6 +1971,7 @@ let secondMattress, bedHeadboard, colWrap = [], bedMove, nightMove, bagMove, bed
   // 行李箱（含輪，寬 54 x 深 28 x 高 83）：轉 90°（54 那邊往櫃內、28 那邊朝門），推進轉角 C 段最右邊（北，貼北側板）、最裡面貼背板（藏在轉角封板後）
   //   點一下：先往左（南）滑到窄格門口，再往外拉出 65cm 整台出櫃；再點反向收回。櫃底板高 9.8cm：拉出櫃緣後輪子落到地板
   let suitcaseRect;
+  const __mSuit = itemMark();
   const suitcase = movable(() => {
     const x1 = MB.wall + cm2px(1.8 + 0.5), x2 = x1 + cm2px(54), y1 = yC[0] + cm2px(1.8 + 0.5), y2 = y1 + cm2px(28), z0 = 9.8, W = 5.5, Z1 = z0 + 83;
     const yc = (y1 + y2) / 2, xc = (x1 + x2) / 2;
@@ -1911,13 +1994,15 @@ let secondMattress, bedHeadboard, colWrap = [], bedMove, nightMove, bagMove, bed
     });
   }, 65, 0);
   {
-    const r0 = suitcaseRect.slice(0, 4), DX = cm2px(65), DY = yC[1] - yC[0];              // 兩段路徑：先往南滑 DY（出轉角到門口），再往外拉 DX
+    const DX = cm2px(65), DY = yC[1] - yC[0];                                            // 兩段路徑：先往南滑 DY（出轉角到門口），再往外拉 DX
     suitcase.apply = k => {
       const ky = Math.min(1, k / 0.4), kx = Math.max(0, (k - 0.4) / 0.6), dx = DX * kx, dy = DY * ky;
       suitcase.pivot.position.set(px2m(dx), -cm2m(9.8) * THREE.MathUtils.smoothstep(kx, 0.8, 0.95), px2m(dy));
-      suitcaseRect[0] = r0[0] + dx; suitcaseRect[2] = r0[2] + dx; suitcaseRect[1] = r0[1] + dy; suitcaseRect[3] = r0[3] + dy;
+      const r0 = RECT_BASE.get(suitcaseRect)[0];                                       // 原位（搬家具後會跟著更新）
+      if (suitcaseRect[0] > -9000) { suitcaseRect[0] = r0[0] + dx; suitcaseRect[2] = r0[2] + dx; suitcaseRect[1] = r0[1] + dy; suitcaseRect[3] = r0[3] + dy; }
     };
   }
+  itemEnd('行李箱', __mSuit);
   wDoor(DE, 0, 200, TOP, 'max'); wDoor(DE, 1, 200, TOP, 'min'); wDoor(DE, 2, 200, TOP, 'max');
   // N：開放吊衣格（深 40cm）
   const xn = MB.wall + cm2px(40);
@@ -1943,12 +2028,14 @@ let secondMattress, bedHeadboard, colWrap = [], bedMove, nightMove, bagMove, bed
 // ---------- 主臥 W1 窗下：MODO 組合收納櫃（Mr.Living 居家先生，原木色白橡木，單格 40x40x40）----------
 // 背靠東牆（x 958）、開口朝西，3 格寬 x 1 層 = 120 x 40 x 40（單格 x 3），
 // 南端貼柱子包板（厚 5，y 952.9）往北 3 格，北端離北牆約 39cm；窗台高 60（低台度），櫃高 40 整座收在窗台下
+const __mModo = itemMark();
 {
   const modoOak = cab.oakGrain;   // 與全屋橡木櫃同一材質
   const x2 = 958, x1 = x2 - cm2px(40), y2 = 958 - cm2px(5), y1 = y2 - cm2px(120), cell = cm2px(40);
   solids.push(Object.assign([x1, y1, x2, y2], { top: 40 }));
   for (let i = 0; i < 1; i++) carcass(x1, y1, x2, y2, i * 40, (i + 1) * 40, modoOak, { face: 'x-', inner: modoOak, dividers: [y1 + cell, y1 + 2 * cell], T: 2 });
 }
+itemEnd('MODO 收納櫃', __mModo);
 
 // ---------- 主臥立燈：IKEA ISJAKT LED 上照落地燈 / 閱讀燈（鍍鎳，高 180、寬 50、底座 Ø24）----------
 // 兩支：主臥床頭板西側（燈臂朝東伸向床）、客廳沙發與餐桌之間（燈臂朝西伸向沙發）。上照 1850 lm、閱讀燈 350 lm，2700K，面板「立燈」按鈕一起開關（預設開）
@@ -1990,7 +2077,7 @@ function isjakt(LX, LY, s = 1) {
   };
 }
 const lamps = [
-  isjakt(603 - cm2px(30), 1048, 1),   // 主臥：床頭板西側（跟著床往西移 30cm），燈臂朝東伸向床
+  (() => { const mk = itemMark(), f = isjakt(603 - cm2px(30), 1048, 1); itemEnd('立燈', mk); return f; })(),   // 主臥：床頭板西側（跟著床往西移 30cm），燈臂朝東伸向床
   // 客廳那盞（沙發東側扶手旁）先拿掉：中島貼沙發後放不下
 ];
 const floorLamp = (on) => lamps.forEach(f => f(on));
@@ -1998,6 +2085,7 @@ floorLamp(true);   // 預設開燈
 
 // ---------- 主臥：宜得利懶骨頭沙發（卡其色，約 Ø70 x 高 45cm）----------
 // 放在床東側、MODO 收納櫃前與柱子包板之間的地板（x 816~917 的空地）；軟塌的豆袋外型：底部壓平、頂面凹陷、略往後靠
+const __mBag = itemMark();
 bagMove = capture(() => {
   const bx = 866, by = 905, R = 0.36, H = 0.45;
   const geo = new THREE.SphereGeometry(1, 48, 32);
@@ -2026,9 +2114,11 @@ bagMove = capture(() => {
   scene.add(bag);
   solids.push(Object.assign([bx - cm2px(34), by - cm2px(34), bx + cm2px(34), by + cm2px(34)], { seat: true, top: 32 }));
 });
+itemEnd('懶骨頭', __mBag);
 
 // ---------- 主臥床頭櫃：Mr.Living Fishbone 收納邊几（白橡木魚骨拼花，寬 45 x 深 40 x 高 59，腳高 18.3）----------
 // 放在床東側：東側板貼齊柱子包板（厚 5）、背面貼齊床頭板；面朝北，上下兩層抽屜（點擊拉出），三角信封把手，外斜 A 字實木腳 + 橫撐
+const __mNight = itemMark();
 nightMove = capture(() => {
   const W = cm2px(45), D = cm2px(40), x2 = 851 - cm2px(5), x1 = x2 - W;
   const yb = MB.south - cm2px(1) - cm2px(BED.hb), yf = yb - D;
@@ -2080,9 +2170,11 @@ nightMove = capture(() => {
     mover(g, k => { g.position.z = -px2m(cm2px(28)) * k; }, parts);
   });
 });
+itemEnd('床頭櫃', __mNight);
 
 // ---------- 主臥東北角小凹處：Dyson PencilVac Fluffycones（SV50，1160 x 226 x 38mm）+ 磁吸充電座 ----------
 // 位置：W1 窗北側、東側分隔牆轉折後的小凹處（x 923~958、y 738~780）；充電座靠北牆，機身直立在座前，吸頭朝南（朝房間）
+const __mDyson = itemMark();
 {
   const cx = 940.5, cy = 738 + cm2px(8);
   const silver = new THREE.MeshStandardMaterial({ color: 0xb9bcc0, roughness: 0.35, metalness: 0.5 });
@@ -2112,6 +2204,7 @@ nightMove = capture(() => {
   box(hx - cm2px(0.8), cy + cm2px(1.5), hx + cm2px(0.8), cy + cm2px(1.9), 110, 114, new THREE.MeshBasicMaterial({ color: 0x4fb3d9 }));   // 小螢幕
   solids.push([cx - cm2px(12), 738, cx + cm2px(12), 738 + cm2px(16)]);
 }
+itemEnd('吸塵器', __mDyson);
 
 // ---------- 主臥床頭樑修飾方案（可切換比較）----------
 // G2 包樑（凸出南牆 55cm、下緣 245cm），房間內段 x 415~851
@@ -2264,7 +2357,7 @@ const hallDL1 = group3(() => {
     [1, 2, 3].forEach(i => box(PF.x1 + i * w - T / 2, PF.y1, PF.x1 + i * w + T / 2, yMid, 3, zT, pale));   // 抽屜間立板
     box(xEnd + G, PF.y1 - T, PF.x2, PF.y1, 3.3, zT - 0.5, cab.paleGrain);                        // 東端固定板
   }
-  // 架高平台上的床墊（28cm，一般單人 90 x 188，長邊貼南牆，白色床單 + 平放枕頭 1 顆在西端），面板「次臥床墊」按鈕切換顯示
+  // 架高平台上的床墊（28cm，一般單人 90 x 188，長邊貼南牆，白色床單 + 平放枕頭 1 顆在西端）（可用搬家具收進背包）
   {
     const g = new THREE.Group(); scene.add(g);
     const sheet = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95 });
@@ -2276,6 +2369,7 @@ const hallDL1 = group3(() => {
     const pfSolid = solids.find(r => r[0] === PF.x1 && r[1] === PF.y1 && r.top === PF.h);
     secondMattress = (on) => { g.visible = on; if (pfSolid) pfSolid.top = on ? PF.h + 28 : PF.h; renderer.shadowMap.needsUpdate = true; };
     secondMattress(true);
+    itemFromObject('次臥床墊', g, [], { small: true });                       // 床墊改成可搬 / 收進背包（原本的「次臥床墊」按鈕拿掉）
   }
 
   // 2. 東牆凹處內嵌高櫃（x 913~958、y 690~728）：櫃面與東牆齊平，架高地板以上到 B5 包樑下緣
@@ -2501,6 +2595,7 @@ const hallDL1 = group3(() => {
 // ---------- 次臥：Backbone Allround Desk 電動升降桌（130 x 70，72~116cm，羊絨米灰）----------
 // 放在北側吊櫃正下方（背靠北牆 y 486，左右置中於吊櫃 x 750~888）；桌面前段暖灰、後段米白，T 型腳
 // 點桌面（或準星對準按 E）切換坐姿 72cm / 站姿 110cm；吊櫃開放格底 173cm，站姿桌面上方仍有約 63cm
+const __mDesk = itemMark();
 {
   const W = cm2px(130), D = cm2px(70), cx = (750 + 750 + cm2px(135)) / 2;
   const x1 = cx - W / 2, x2 = cx + W / 2, yb = 486 + cm2px(1), yf = yb + D;
@@ -2537,13 +2632,15 @@ const hallDL1 = group3(() => {
       box(mcx - MW + cm2px(0.6), my + cm2px(1.6), mcx + MW - cm2px(0.6), my + cm2px(1.8), z0 + 0.6, z0 + 41.6, screen, o),    // 螢幕面（窄邊框）
     );
   }
-  solids.push([x1, yb, x2, yf]);
+  solids.push(Object.assign([x1, yb, x2, yf], { under: true }));   // under：桌面下方可塞椅子 / 長凳（搬家具時不算撞到）
   const m = mover(g, k => { g.position.y = cm2m((STAND - SIT) * k); }, parts);
   m.kind = 'room';
 }
+itemEnd('升降桌', __mDesk);
 
 // ---------- 次臥：MOTTI Voanna-Plus 人體工學椅（灰色，寬 68、座高 45~52.5、總高 117~123、座寬 51）----------
 // 升降桌前、面朝北（桌子），座高取 47；網背 + 4D 頭枕 + 4D 扶手（高 66）、鋁合金五爪腳 + PU 輪
+const __mMotti = itemMark();
 movable(() => {   // 點擊往後（南）拉出 40cm
   const cx = 750 + cm2px(135) / 2, cy = 486 + cm2px(1 + 70 + 22);                        // 座面中心（前緣約收入桌下 3cm）
   // 灰色網布：canvas 畫菱形編織網孔（透光），椅背半透明可看到後方，座墊用不透光的同色網紋
@@ -2606,6 +2703,7 @@ movable(() => {   // 點擊往後（南）拉出 40cm
     softBox(ax - cm2px(4), cy - cm2px(13), ax + cm2px(4), cy + cm2px(12), 64, 66.5, 1, dark);
   });
 }, 0, 40);
+itemEnd('人體工學椅', __mMotti);
 
 // 三個房門口的走道崁燈（7.5cm、8W ≈ 720 lm）：浴室門、次臥門、走道門之間（x 567~658、y 541~625）正中
 const hallDL2 = group3(() => {
@@ -2760,7 +2858,9 @@ function updateUI() {
     btnMode.textContent = '切換：漫遊模式';
   }
   hint.style.display = 'none';                       // 「點擊畫面進入室內漫遊」提示已依使用者要求移除
-  cross.style.display = mode === 'walk' && (walk.isLocked || IS_TOUCH) ? 'block' : 'none';
+  // PointerLockControls 是先發 lock / unlock 事件、之後才改 isLocked，所以這裡直接看瀏覽器目前鎖定的元素（不然準星會顛倒）
+  const locked = document.pointerLockElement === renderer.domElement;
+  cross.style.display = mode === 'walk' && (locked || IS_TOUCH) ? 'block' : 'none';
 }
 
 let walkSaved = { pos: startPos.clone(), quat: camera.quaternion.clone() };
@@ -2899,11 +2999,6 @@ const btnWood = document.getElementById('btnWood');
     renderer.shadowMap.needsUpdate = true;
     btnFrame.textContent = `床架：${hasFrame ? '有' : '無'}`; btnFrame.classList.toggle('off', !hasFrame);
   };
-}
-{
-  let on = true;
-  const b = document.getElementById('btnMat2');
-  b.onclick = (e) => { e.stopPropagation(); on = !on; secondMattress(on); b.textContent = `次臥床墊：${on ? '有' : '無'}`; b.classList.toggle('off', !on); };
 }
 // 環境光遮蔽（GTAO，GPU 後製）：牆角、天花交界、家具底下自然變暗；觸控裝置預設關（較吃效能），可用「陰影細節」按鈕切換
 const composer = new EffectComposer(renderer);
@@ -3178,9 +3273,9 @@ const ruler = (() => {
   const dotGeo = new THREE.SphereGeometry(0.012, 12, 8);
   const group = new THREE.Group(); scene.add(group);
   const mk = (geo, mat) => { const m = new THREE.Mesh(geo, mat); m.renderOrder = 999; return m; };
-  const cursor = mk(dotGeo, yellow); cursor.visible = false; scene.add(cursor);
+  const cursor = mk(dotGeo, yellow); cursor.visible = false; scene.add(cursor); cursor.userData.noShot = true;
   const preview = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), lineMat);
-  preview.renderOrder = 999; preview.visible = false; preview.frustumCulled = false; scene.add(preview);
+  preview.renderOrder = 999; preview.visible = false; preview.frustumCulled = false; scene.add(preview); preview.userData.noShot = true;
   const hud = document.getElementById('rulerHud'), btn = document.getElementById('btnRuler');
   const rc = new THREE.Raycaster();
   let on = false, a = null, hover = null, t = 0;
@@ -3216,6 +3311,7 @@ const ruler = (() => {
   function setHud(html) { hud.innerHTML = html; hud.style.display = on ? 'block' : 'none'; }
   function set(v) {
     on = v; a = null; cursor.visible = false; preview.visible = false; tape.equip(v);
+    if (v && typeof furn !== 'undefined' && furn.on) furn.set(false);                // 量尺與搬家具二選一
     if (!on) group.clear();
     btn.textContent = `量尺：${on ? '開' : '關'}`; btn.classList.toggle('off', !on);
     const bt = document.getElementById('btnRulerT'), bu = document.getElementById('btnUse');   // 手機：量尺鍵亮起，「開關」鍵改成「放點」
@@ -3253,8 +3349,224 @@ const ruler = (() => {
   return { get on() { return on; }, click, update };
 })();
 let mouseNdc = new THREE.Vector2(9, 9);
+renderer.domElement.addEventListener('pointerdown', (e) => { mouseNdc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); });
 renderer.domElement.addEventListener('pointermove', (e) => { mouseNdc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); });
+// ---------- 搬家具 + 背包（G 鍵 / 面板「搬家具」按鈕）----------
+// 搬家具模式：準星（俯瞰為滑鼠）對到家具點一下拿起 → 家具跟著準星在地上移動，地上綠框 = 可以放、紅框 = 會撞到；
+//   靠近牆 / 家具 8cm 內自動貼齊（留 0.5cm），畫面下方顯示到四周的距離；左鍵放下、T 或滾輪轉 90°、X / 右鍵取消（放回原位）、
+//   B 收進背包。背包：畫面下方一排格子（像遊戲快捷欄），按 1~9 或點格子把家具拿出來，再找位置放下
+const furn = (() => {
+  const hud = document.getElementById('furnHud'), bar = document.getElementById('bagBar'), btn = document.getElementById('btnFurn');
+  const rc = new THREE.Raycaster(), floor = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hitP = new THREE.Vector3();
+  const footMat = new THREE.MeshBasicMaterial({ color: 0x4caf50, transparent: true, opacity: 0.35, depthWrite: false, toneMapped: false });
+  const foot = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), footMat);
+  foot.renderOrder = 998; foot.visible = false; scene.add(foot);
+  // 準星 / 滑鼠對到可搬的家具：黃色外框高亮 + 準星變大變黃 + 提示名稱
+  const hl = new THREE.Box3Helper(new THREE.Box3(), 0xffd24a);
+  hl.material.depthTest = false; hl.material.toneMapped = false; hl.renderOrder = 999; hl.visible = false; scene.add(hl);
+  hl.userData.noShot = foot.userData.noShot = true;
+  let hoverIt = null;
+  const setCross = (hot) => cross.classList.toggle('hot', hot);
+  function hover(it) {
+    if (it === hoverIt) return;
+    hoverIt = it; hl.visible = !!it; setCross(!!it);
+    if (it) { hl.box.setFromObject(it.pivot); hl.box.expandByScalar(0.015); setHud(`點一下拿起：${it.name}`); }
+    else setHud(on ? (IS_TOUCH ? '搬家具：點家具拿起，再點地上放下' : '搬家具：對準家具點一下拿起（B 收進背包、1~9 從背包拿出）') : '');
+  }
+  const bag = [];
+  let on = false, held = null, from = null, ok = false, q = 0, t = 0, last = null;
+  const rcDown = new THREE.Raycaster(), DOWN = new THREE.Vector3(0, -1, 0);
+  const isHeldPart = (o) => { for (; o; o = o.parent) if (o === held?.pivot) return true; return false; };
+  function surfaceAt(cx, cy) {                                                         // 小物件：找正下方第一個實體表面（桌面 / 床架 / 地板）
+    rcDown.set(new THREE.Vector3(px2m(cx - ORIGIN.x), 2.6, px2m(cy - ORIGIN.y)), DOWN);
+    rcDown.camera = camera;                                                          // 場景裡有 Sprite（樑標籤），raycast 需要相機
+    for (const h of rcDown.intersectObjects(scene.children, true)) {
+      const o = h.object;
+      if (!o.isMesh || !shown(o) || o.userData.noShot || o.material.transparent || isHeldPart(o) || o.material.depthTest === false) continue;
+      if (o.material.side === THREE.DoubleSide && o.geometry?.type === 'PlaneGeometry') continue;   // 光暈貼片
+      return h.point.y;
+    }
+    return 0;
+  }
+  const pivotTo = (it, cx, cy, yWorld) => { const pw = it.parent.getWorldPosition(new THREE.Vector3()); it.pivot.position.set(px2m(cx - ORIGIN.x) - pw.x, yWorld - it.baseY - pw.y, px2m(cy - ORIGIN.y) - pw.z); };
+  const SNAP = cm2px(20), GAP = cm2px(0.3), ALIGN = cm2px(6), cm = (v) => Math.round(v * CM_PER_PX);   // 磁吸：20cm 內吸過去貼齊（留 3mm）、邊線差 6cm 內自動對齊
+  const isOwn = (it, r) => it.rects.some(e => e.r === r);
+  const union = (rs) => rs.reduce((u, r) => [Math.min(u[0], r[0]), Math.min(u[1], r[1]), Math.max(u[2], r[2]), Math.max(u[3], r[3])], [1e9, 1e9, -1e9, -1e9]);
+  const others = (it) => solids.filter(r => r[0] > -9000 && !r.gate && !isOwn(it, r));
+  function setHud(html) { hud.innerHTML = html; hud.style.display = html ? 'block' : 'none'; }
+  function renderBar() {
+    bar.innerHTML = '';
+    bar.style.display = on || bag.length ? 'flex' : 'none';
+    for (let i = 0; i < 9; i++) {
+      const it = bag[i], d = document.createElement('div');
+      d.className = 'slot' + (it ? '' : ' empty');
+      d.innerHTML = `<b>${i + 1}</b>${it ? it.name : ''}`;
+      if (it) d.onclick = (e) => { e.stopPropagation(); takeOut(i); };
+      bar.appendChild(d);
+    }
+  }
+  const touchBar = document.getElementById('furnTouch');
+  const syncTouch = () => {
+    touchBar.style.display = IS_TOUCH && held ? 'flex' : 'none';
+    const bt = document.getElementById('btnFurnT'), bu = document.getElementById('btnUse');
+    if (bt) bt.classList.toggle('ready', on);
+    if (bu && IS_TOUCH && !ruler.on) bu.textContent = on ? (held ? '放下' : '拿起') : '開關';
+  };
+  function set(v) {
+    if (!v && held) cancel();
+    if (!v) hover(null);
+    on = v;
+    btn.textContent = `搬家具：${on ? '開' : '關'}`; btn.classList.toggle('off', !on);
+    if (on && ruler.on) document.getElementById('btnRuler').click();
+    setHud(on ? (IS_TOUCH ? '搬家具：點家具拿起，再點地上放下' : '搬家具：對準家具點一下拿起（B 收進背包、1~9 從背包拿出）') : '');
+    renderBar(); syncTouch();
+  }
+  // 依候選中心算碰撞、磁吸（貼牆 / 貼家具 + 邊線對齊）、四周距離
+  function evaluate(it, cx, cy) {
+    const inside = floorRects.some(f => cx > f[0] && cx < f[2] && cy > f[1] && cy < f[3]);
+    if (it.small) return { cx, cy, u: null, g: null, ok: inside, small: true, y: surfaceAt(cx, cy) };
+    const obs = others(it);
+    let rs = it.rects.map(e => itemRect(e.local, cx, cy, q));
+    if (!rs.length) { const h = cm2px(20); rs = [[cx - h, cy - h, cx + h, cy + h]]; }
+    const gaps = (u) => {
+      const g = { E: Infinity, W: Infinity, S: Infinity, N: Infinity };
+      obs.forEach(r => {
+        if (r[1] < u[3] && r[3] > u[1]) { if (r[0] >= u[2] - 0.5) g.E = Math.min(g.E, r[0] - u[2]); if (r[2] <= u[0] + 0.5) g.W = Math.min(g.W, u[0] - r[2]); }
+        if (r[0] < u[2] && r[2] > u[0]) { if (r[1] >= u[3] - 0.5) g.S = Math.min(g.S, r[1] - u[3]); if (r[3] <= u[1] + 0.5) g.N = Math.min(g.N, u[1] - r[3]); }
+      });
+      return g;
+    };
+    const shift = (dx, dy) => { cx += dx; cy += dy; rs = rs.map(r => [r[0] + dx, r[1] + dy, r[2] + dx, r[3] + dy]); };
+    let u = union(rs), g = gaps(u), dx = 0, dy = 0, snapped = [];
+    // 1. 貼合：20cm 內往最近的牆 / 家具吸過去
+    if (g.E < SNAP && g.E > GAP && g.E <= g.W) { dx = g.E - GAP; snapped.push('東'); } else if (g.W < SNAP && g.W > GAP) { dx = -(g.W - GAP); snapped.push('西'); }
+    if (g.S < SNAP && g.S > GAP && g.S <= g.N) { dy = g.S - GAP; snapped.push('南'); } else if (g.N < SNAP && g.N > GAP) { dy = -(g.N - GAP); snapped.push('北'); }
+    if (g.E <= GAP) snapped.push('東'); if (g.W <= GAP) snapped.push('西'); if (g.S <= GAP) snapped.push('南'); if (g.N <= GAP) snapped.push('北');
+    if (dx || dy) { shift(dx, dy); u = union(rs); }
+    // 2. 對齊：貼著（或很靠近）的鄰居，邊線差 6cm 內就對齊（例如兩張椅子前緣、櫃子側邊）
+    let ax = 0, ay = 0, best = { x: ALIGN, y: ALIGN };
+    obs.forEach(r => {
+      const nearY = r[1] < u[3] + SNAP && r[3] > u[1] - SNAP, nearX = r[0] < u[2] + SNAP && r[2] > u[0] - SNAP;
+      if (nearY && !(r[1] < u[3] && r[3] > u[1])) [[r[0], u[0]], [r[2], u[2]], [r[0], u[2]], [r[2], u[0]]].forEach(([a, b]) => { const d = a - b; if (Math.abs(d) < best.x && Math.abs(d) > 0.3) { best.x = Math.abs(d); ax = d; } });
+      if (nearX && !(r[0] < u[2] && r[2] > u[0])) [[r[1], u[1]], [r[3], u[3]], [r[1], u[3]], [r[3], u[1]]].forEach(([a, b]) => { const d = a - b; if (Math.abs(d) < best.y && Math.abs(d) > 0.3) { best.y = Math.abs(d); ay = d; } });
+    });
+    if (!dx && ax) { shift(ax, 0); snapped.push('對齊'); } if (!dy && ay) { shift(0, ay); if (!snapped.includes('對齊')) snapped.push('對齊'); }
+    u = union(rs); g = gaps(u);
+    const seat = it.rects.some(e => e.r.seat), under = it.rects.some(e => e.r.under);
+    const hit = rs.some(a => obs.some(r => !(seat && r.under) && !(under && r.seat) && a[0] < r[2] - 0.3 && a[2] > r[0] + 0.3 && a[1] < r[3] - 0.3 && a[3] > r[1] + 0.3));   // 椅子 / 凳子可以塞進桌下
+    return { cx, cy, u, g, ok: !hit && inside, snapped: [...new Set(snapped)] };
+  }
+  function pickItem(ndc) {
+    rc.setFromCamera(ndc, camera); rc.far = mode === 'walk' ? 6 : 200;
+    for (const h of rc.intersectObjects(scene.children, true)) {
+      if (!h.object.isMesh || !shown(h.object) || h.object === foot) continue;
+      for (let o = h.object; o; o = o.parent) if (o.userData.item) return o.userData.item;
+      if (!h.object.material.transparent) return null;
+    }
+    return null;
+  }
+  function grab(it, fromBag) {
+    hover(null);
+    recordOff(it);
+    held = it; q = it.q; from = fromBag ? null : [it.cx, it.cy, it.q, it.pivot.getWorldPosition(new THREE.Vector3()).y + it.baseY];
+    hideItemRects(it);
+    it.pivot.visible = true;
+    foot.visible = true;
+    setHud(`拿著：${it.name}`);
+    syncTouch();
+  }
+  function drop() {
+    if (!held || !last || !last.ok) return;
+    placeItem(held, last.cx, last.cy, q, held.small ? last.y : null);
+    held = null; foot.visible = false;
+    set(false);                                                                        // 放好就自動關掉搬家具模式，點擊恢復成開門 / 拉椅子
+  }
+  function cancel() {
+    if (!held) return;
+    if (from) placeItem(held, from[0], from[1], from[2], held.small ? from[3] : null);
+    else { bag.push(held); held.pivot.visible = false; }                                 // 從背包拿出來的 → 放回背包
+    held = null; foot.visible = false; renderBar(); syncTouch();
+    setHud(on ? '搬家具：對準家具點一下拿起（B 收進背包、1~9 從背包拿出）' : '');
+  }
+  function store() {
+    if (!held) return;
+    if (bag.length >= 9) { setHud('背包滿了（最多 9 件）'); return; }
+    held.pivot.visible = false; held.stored = true;
+    bag.push(held); held = null; foot.visible = false; renderBar(); syncTouch();
+    renderer.shadowMap.needsUpdate = true;
+    setHud('收進背包了：按 1~9 或點下方格子拿出來');
+  }
+  function takeOut(i) {
+    if (held || !bag[i]) return;
+    if (!on) set(true);
+    const it = bag.splice(i, 1)[0]; it.stored = false;
+    grab(it, true); renderBar();
+  }
+  function click(ndc) {
+    if (held) { t = 1; update(ndc, 0); drop(); return; }                                // 先依點擊位置（手機：點的地方）算一次再放下
+    const it = pickItem(ndc);
+    if (it) grab(it, false);
+  }
+  // 平常模式：準星 / 滑鼠對到門、櫃門、抽屜、椅子也用同一個黃框高亮
+  let hoverM = null, ht = 0;
+  function hoverMover(ndc, dt) {
+    ht += dt; if (ht < 0.1) return; ht = 0;
+    const m = ruler.on || (mode === 'walk' && !walk.isLocked && !IS_TOUCH) ? null : pick(ndc, mode === 'walk' ? (IS_TOUCH ? 3.5 : 3.2) : 100);
+    setCross(!!m);
+    if (IS_TOUCH) btnUse.classList.toggle('ready', !!m);
+    if (m === hoverM) { if (m) { hl.box.setFromObject(m.pivot); hl.box.expandByScalar(0.01); } return; }   // 門在動時外框跟著
+    hoverM = m; hl.visible = !!m;
+    if (m) { hl.box.setFromObject(m.pivot); hl.box.expandByScalar(0.01); }
+  }
+  function update(ndc, dt) {
+    if (!held) {
+      if (!on) { if (hoverIt) hover(null); hoverMover(ndc, dt); return; }
+      if (hoverM) { hoverM = null; hl.visible = false; }
+      t += dt; if (t < 0.08) return; t = 0;
+      hover(pickItem(ndc));
+      return;
+    }
+    t += dt; if (t < 0.03) return; t = 0;
+    rc.setFromCamera(ndc, camera);
+    if (!rc.ray.intersectPlane(floor, hitP)) return;
+    if (mode === 'walk' && hitP.distanceTo(camera.position) > 5) return;
+    const r = evaluate(held, hitP.x * 100 / CM_PER_PX + ORIGIN.x, hitP.z * 100 / CM_PER_PX + ORIGIN.y);
+    last = r;
+    pivotTo(held, r.cx, r.cy, (r.small ? r.y : 0) + (r.small ? 0.015 : 0.04));        // 拿起來時微微離地（小物件貼著下面的表面）
+    held.pivot.rotation.y = q * Math.PI / 2;
+    const tips = held.small ? '' : '';
+    if (r.small) foot.visible = false;
+    else {
+      foot.visible = true;
+      foot.position.set(px2m((r.u[0] + r.u[2]) / 2 - ORIGIN.x), 0.006, px2m((r.u[1] + r.u[3]) / 2 - ORIGIN.y));
+      foot.scale.set(px2m(r.u[2] - r.u[0]), 1, px2m(r.u[3] - r.u[1]));
+      footMat.color.set(!r.ok ? 0xe53935 : r.snapped.length ? 0x29b6f6 : 0x4caf50);   // 紅 = 撞到、藍 = 磁吸貼齊、綠 = 可以放
+    }
+    const f = (v) => v === Infinity ? '—' : `${cm(v)}`;
+    const info = r.small ? `<br><span>放在${r.y > 0.05 ? `離地 ${Math.round(r.y * 100)}cm 的表面上` : '地板上'}</span>` : `${r.snapped.length ? `　<span style="color:#7fd3ff">磁吸：${r.snapped.join('、')}</span>` : ''}<br><span>北 ${f(r.g.N)}｜南 ${f(r.g.S)}｜西 ${f(r.g.W)}｜東 ${f(r.g.E)} cm</span>`;
+    setHud(`拿著：${held.name}${r.ok ? '' : '　<span style="color:#ff7b7b">這裡放不下</span>'}${info}${IS_TOUCH ? '<br><small>點畫面放下｜右側：轉 / 收 / 取消</small>' : '<br><small>左鍵放下｜T / 滾輪轉 90°｜B 收進背包｜X / 右鍵取消</small>'}`);
+  }
+  btn.onclick = (e) => { e.stopPropagation(); set(!on); };
+  document.getElementById('btnBag').onclick = (e) => { e.stopPropagation(); if (held) store(); else { bar.style.display = bar.style.display === 'flex' ? 'none' : 'flex'; if (bar.style.display === 'flex') renderBar(); } };
+  addEventListener('keydown', (e) => {
+    if (e.code === 'KeyG' && !e.repeat) set(!on);
+    if (!on && !/^Digit[1-9]$/.test(e.code)) return;
+    if (e.code === 'KeyT' && held && !e.repeat) q = (q + 1) % 4;
+    if (e.code === 'KeyB' && !e.repeat) store();
+    if (e.code === 'KeyX' && held) cancel();
+    if (/^Digit[1-9]$/.test(e.code) && !e.repeat && bag.length) takeOut(+e.code.slice(5) - 1);
+  });
+  addEventListener('wheel', (e) => { if (held) { q = (q + (e.deltaY > 0 ? 1 : 3)) % 4; } }, { passive: true });
+  renderer.domElement.addEventListener('contextmenu', (e) => { if (held) { e.preventDefault(); cancel(); } });
+  const tap = (el, fn) => el.addEventListener(IS_TOUCH ? 'touchstart' : 'click', (e) => { e.preventDefault(); e.stopPropagation(); fn(); }, { passive: false });
+  touchBar.querySelectorAll('button').forEach(b => tap(b, () => { if (b.dataset.a === 'rot' && held) q = (q + 1) % 4; if (b.dataset.a === 'store') store(); if (b.dataset.a === 'cancel') cancel(); }));
+  const bft = document.getElementById('btnFurnT'); if (bft) tap(bft, () => set(!on));
+  if (IS_TOUCH) bar.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+  renderBar();
+  return { get on() { return on; }, get holding() { return !!held; }, get last() { return last; }, click, update, set };
+})();
 function interact(ndc, far) {
+  if (furn.on) { furn.click(ndc); return; }                                           // 搬家具模式：點擊 = 拿起 / 放下
   if (ruler.on) { ruler.click(ndc); return; }                                         // 量尺開啟時：點擊 = 放量測點
   const m = pick(ndc, far);
   if (m && m.stops) m.si = (m.si + 1) % m.stops.length;                             // 多段（餐椅：現在 → 拉出 → 完全收進 → 現在）
@@ -3442,19 +3754,23 @@ function tick() {
     camera.position.y = eyeY + jumpY;
     // 準星對到可開關的櫃門時變色提示
     hoverT += dt;
-    if (hoverT > 0.15) {                             // 準星對到可開關的東西：準星變黃，手機的「開關」鍵也亮起
+    if (false) {                                     // 準星對到可開關的東西：改由 furn.hoverMover 處理（黃框高亮 + 準星變黃，俯瞰模式也有）
       hoverT = 0;
       const target = pick(CENTER, IS_TOUCH ? 3.5 : 3.2);
-      cross.style.background = target ? '#ffd24a' : 'rgba(255,255,255,.7)';
+      cross.classList.toggle('hot', !!target);
       if (IS_TOUCH) btnUse.classList.toggle('ready', !!target);
     }
   }
   if (orbit.enabled) orbit.update();
   ruler.update(mode === 'walk' ? CENTER : mouseNdc, rawDt || 0.016);
+  furn.update(mode === 'walk' ? CENTER : mouseNdc, rawDt || 0.016);
   syncSelfLit();
   tape.frame(rawDt > 0.1 ? 0.1 : rawDt, mode === 'walk');
+  const shotHide = shotPending ? scene.children.filter(o => o.userData.noShot && o.visible) : [];   // 截圖這一幀：藏起高亮框 / 落點框 / 量尺游標和手
+  shotHide.forEach(o => { o.visible = false; });
   if (aoOn) composer.render(); else renderer.render(scene, camera);
-  tape.draw();                                                                        // 手和捲尺畫在最上層
+  if (!shotPending) tape.draw();                                                      // 手和捲尺畫在最上層
+  shotHide.forEach(o => { o.visible = true; });
   if (shotPending) {                                                     // 截圖：剛畫完這一幀就讀畫布（不用開 preserveDrawingBuffer）
     shotPending = false;
     renderer.domElement.toBlob(b => {

@@ -1644,7 +1644,9 @@ function updateUI() {
     btnMode.textContent = '切換：漫遊模式';
   }
   hint.style.display = 'none';                       // 「點擊畫面進入室內漫遊」提示已依使用者要求移除
-  cross.style.display = mode === 'walk' && (walk.isLocked || IS_TOUCH) ? 'block' : 'none';
+  // PointerLockControls 是先發 lock / unlock 事件、之後才改 isLocked，所以這裡直接看瀏覽器目前鎖定的元素（不然準星會顛倒）
+  const locked = document.pointerLockElement === renderer.domElement;
+  cross.style.display = mode === 'walk' && (locked || IS_TOUCH) ? 'block' : 'none';
 }
 
 let walkSaved = { pos: startPos.clone(), quat: camera.quaternion.clone() };
