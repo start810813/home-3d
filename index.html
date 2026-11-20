@@ -1886,6 +1886,38 @@ let secondMattress, bedHeadboard, colWrap = [], bedMove, nightMove, bagMove, bed
   // 門片：窄格鉸鍊在中立板（避免打到電子衣櫥），寬格兩片對開
   const wDoor = (E, i, z0, z1, hinge) => hingeDoor(xf, E[i] + cm2px(0.2), xd, E[i + 1] - cm2px(0.2), z0 + 0.2, z1 - 0.2, cab.greige, { hinge, out: 1, angle: 85 });
   wDoor(DE, 0, 8, 200, 'max'); wDoor(DE, 1, 8, 200, 'min'); wDoor(DE, 2, 8, 200, 'max');
+  // 行李箱（含輪，寬 54 x 深 28 x 高 83）：轉 90°（54 那邊往櫃內、28 那邊朝門），推進轉角 C 段最右邊（北，貼北側板）、最裡面貼背板（藏在轉角封板後）
+  //   點一下：先往左（南）滑到窄格門口，再往外拉出 65cm 整台出櫃；再點反向收回。櫃底板高 9.8cm：拉出櫃緣後輪子落到地板
+  let suitcaseRect;
+  const suitcase = movable(() => {
+    const x1 = MB.wall + cm2px(1.8 + 0.5), x2 = x1 + cm2px(54), y1 = yC[0] + cm2px(1.8 + 0.5), y2 = y1 + cm2px(28), z0 = 9.8, W = 5.5, Z1 = z0 + 83;
+    const yc = (y1 + y2) / 2, xc = (x1 + x2) / 2;
+    const shell = new THREE.MeshStandardMaterial({ color: 0x5d6f7c, roughness: 0.35, metalness: 0.1 });   // 霧面藍灰硬殼
+    const dark = new THREE.MeshStandardMaterial({ color: 0x232427, roughness: 0.5 });
+    const alu = new THREE.MeshStandardMaterial({ color: 0xb9bcc0, roughness: 0.3, metalness: 0.7 });
+    softBox(x1, y1, x2, y2, z0 + W, Z1 - 1, 4, shell, { collide: true });                     // 箱體（輪子 5.5 + 箱 76.5）
+    suitcaseRect = Object.assign(solids[solids.length - 1], { top: Z1 });
+    box(x1 - cm2px(0.2), yc - cm2px(0.6), x2 + cm2px(0.2), yc + cm2px(0.6), z0 + W + 2, Z1 - 3, dark);   // 拉鍊 / 開合線（繞一圈）
+    box(x1 + cm2px(2), yc - cm2px(0.6), x2 - cm2px(2), yc + cm2px(0.6), Z1 - 1.6, Z1 - 0.8, dark);
+    [0.25, 0.5, 0.75].forEach(t => box(x1 + cm2px(4), y2 - cm2px(0.3), x2 - cm2px(4), y2 + cm2px(0.2), z0 + W + 76.5 * t - 0.4, z0 + W + 76.5 * t + 0.4, shell));   // 正面（朝南）橫向壓紋
+    // 拉桿（收合，握把貼在箱頂、靠背面）+ 側提把（朝門）
+    [-1, 1].forEach(sd => box(xc + sd * cm2px(12) - cm2px(0.8), y1 + cm2px(3), xc + sd * cm2px(12) + cm2px(0.8), y1 + cm2px(4.6), Z1 - 1, Z1 + 0.5, alu));
+    box(xc - cm2px(14), y1 + cm2px(2.5), xc + cm2px(14), y1 + cm2px(5), Z1 + 0.5, Z1 + 2.5, dark);
+    box(x2, yc - cm2px(6), x2 + cm2px(1.5), yc + cm2px(6), z0 + 45, z0 + 48, dark);
+    // 四個萬向輪
+    [[x1 + cm2px(4), y1 + cm2px(3)], [x2 - cm2px(4), y1 + cm2px(3)], [x1 + cm2px(4), y2 - cm2px(3)], [x2 - cm2px(4), y2 - cm2px(3)]].forEach(([x, y]) => {
+      box(x - cm2px(2), y - cm2px(2), x + cm2px(2), y + cm2px(2), z0 + 3.5, z0 + W, dark);
+      cyl(x, y, 2.2, z0, z0 + 3.5, dark);
+    });
+  }, 65, 0);
+  {
+    const r0 = suitcaseRect.slice(0, 4), DX = cm2px(65), DY = yC[1] - yC[0];              // 兩段路徑：先往南滑 DY（出轉角到門口），再往外拉 DX
+    suitcase.apply = k => {
+      const ky = Math.min(1, k / 0.4), kx = Math.max(0, (k - 0.4) / 0.6), dx = DX * kx, dy = DY * ky;
+      suitcase.pivot.position.set(px2m(dx), -cm2m(9.8) * THREE.MathUtils.smoothstep(kx, 0.8, 0.95), px2m(dy));
+      suitcaseRect[0] = r0[0] + dx; suitcaseRect[2] = r0[2] + dx; suitcaseRect[1] = r0[1] + dy; suitcaseRect[3] = r0[3] + dy;
+    };
+  }
   wDoor(DE, 0, 200, TOP, 'max'); wDoor(DE, 1, 200, TOP, 'min'); wDoor(DE, 2, 200, TOP, 'max');
   // N：開放吊衣格（深 40cm）
   const xn = MB.wall + cm2px(40);

@@ -281,7 +281,7 @@ scene.add(ceilingGroup);
 box(...OUTER, CEIL_H, CEIL_H + SLAB, mat.ceil, { group: ceilingGroup });
 // 臥房更衣區（浴室以南、穀倉門以西：x 37.9~236.8、y 237.8~507）平頂降板 30cm → 天花 290；
 // 南側往床區的開口處做 2cm 封邊（290~320）。崁燈、撒水頭、探測器、窗簾軌道都跟著降到 290
-const DROP = { x1: 37.9, y1: 237.8, x2: 236.8, y2: 515, z: CEIL_H - 30 };   // 南緣對齊玻璃隔間南面（y 515），封邊跟隔間上方輕隔間同一平面
+const DROP = { x1: 37.9, y1: 237.8, x2: 236.8, y2: 500.9, z: CEIL_H - 30 };   // 南緣對齊玻璃隔間南面（y 500.9），封邊跟隔間上方輕隔間同一平面
 const ceilAt = (x, y) => (x > DROP.x1 && x < DROP.x2 && y > DROP.y1 && y < DROP.y2) ? DROP.z : CEIL_H;
 box(DROP.x1, DROP.y1, DROP.x2, DROP.y2, DROP.z, DROP.z + 1.5, mat.ceil, { group: ceilingGroup });
 box(DROP.x1, DROP.y2 - 1.2 / CM_PER_PX, DROP.x2, DROP.y2, DROP.z, CEIL_H, mat.ceil, { group: ceilingGroup });
@@ -1252,10 +1252,10 @@ function setMahjong(on) {
   b.textContent = `麻將：${on ? '開桌' : '收起'}`; b.classList.toggle('off', !on);
 }
 
-// 4. 隔間：上半玻璃透光隔間牆（x 236.8~361.3、y 507~515，西端與短隔間西面對齊；西端先做 20cm 實牆垛，玻璃從 x 257 起；下段實牆 90cm + 長虹玻璃到 242cm（與穀倉門開口上緣齊）、黑色鋁框；242 以上輕隔間封到天花）
-//         + 8cm 輕隔間（x 361.3~369.5，接到南側 RC 柱），把架高床區與冰箱 / 客廳分開
+// 4. 隔間：上半玻璃透光隔間牆（x 236.8~369.5、y 492.9~500.9：客廳側牆面對齊後陽台西牆柱面 y 492.9，西端與短隔間西面對齊；西端先做 20cm 實牆垛，玻璃從 x 257 起；下段實牆 90cm + 長虹玻璃到 242cm（與穀倉門開口上緣齊）、黑色鋁框；242 以上輕隔間封到天花）
+//         + 8cm 輕隔間（x 369.5~377.7：房間側牆面貼平南側 RC 柱西面 x 369.5），把架高床區與冰箱 / 客廳分開
 {
-  const y1 = 507, y2 = 515, PIER = 236.8 + cm2px(20), xa = PIER, xb = 361.3, LOW = 90, GTOP = OPEN_TOP;
+  const y1 = 492.9, y2 = 500.9, PIER = 236.8 + cm2px(20), xa = PIER, xb = 369.5, LOW = 90, GTOP = OPEN_TOP;
   wall([236.8, y1, PIER, y2], mat.light);                                                    // 西端 20cm 輕隔間牆垛（穀倉門關門靠這裡、軌道與玻璃框也鎖在這段）
   box(xa, y1, xb, y2, 0, LOW, mat.light, { collide: true });
   // 長虹玻璃（直紋壓花玻璃，紋距約 1.5cm）：直向條紋貼圖 + 法線貼圖做出凹凸，半透光、看不清後方
@@ -1280,16 +1280,16 @@ function setMahjong(on) {
   box(xa, y1, xb, y2, GTOP - 3, GTOP, aluFrame);                                              // 上框
   const n = Math.round((xb - xa) * CM_PER_PX / 75);
   for (let i = 0; i <= n; i++) { const x = xa + (xb - xa) * i / n; box(Math.max(xa, x - f / 2), y1, Math.min(xb, x + f / 2), y2, LOW, GTOP, aluFrame); }
-  wall([361.3, 507, 369.5, 592.4], mat.light);
+  wall([369.5, 492.9, 377.7, 592.4], mat.light);
 }
 
-// 4b. 穀倉門（房間側）：關門時遮住短隔間南端（y 406.1）到玻璃隔間（y 507）之間的開口（寬約 99cm）；
+// 4b. 穀倉門（房間側）：關門時遮住短隔間南端（y 406.1）到玻璃隔間（y 492.9）之間的開口（寬約 85cm，隔間往外對齊柱面後變窄）；
 //     門片寬 109（兩側各搭 5cm）x 高 240、厚 3.5cm 實木；開口上方（242 以上）輕隔間封到天花，軌道鎖在封板西面，掛在西側（臥區 / 更衣區那側）的黑色平鐵軌道上，
 //     開門時往北滑、貼著短隔間西面，但留 15cm 在開口內（把手在這段），從客廳也能拉上。點門片或按 E 開關
 {
-  const th = cm2px(3.5), xp = 236.8 - cm2px(2) - th / 2, ya = 406.1 - cm2px(5), yb = 507 + cm2px(5), H = 240, REVEAL = 15, travel = yb - (406.1 + cm2px(REVEAL));   // 開門時門片仍露出開口 15cm，客廳側摸得到把手、可從客廳拉上
+  const th = cm2px(3.5), xp = 236.8 - cm2px(2) - th / 2, ya = 406.1 - cm2px(5), yb = 492.9 + cm2px(5), H = 240, REVEAL = 15, travel = yb - (406.1 + cm2px(REVEAL));   // 開門時門片仍露出開口 15cm，客廳側摸得到把手、可從客廳拉上
   box(236.8 - cm2px(1.5), ya - travel - cm2px(6), 236.8, yb + cm2px(4), H + 8, H + 14, aluFrame);        // 軌道（平鐵，鎖在短隔間 / 開口封板 / 玻璃隔間上方輕隔間）
-  box(236.8, 406.1, 247.1, 507, OPEN_TOP, CEIL_H, mat.light);                                              // 開口上方輕隔間封板
+  box(236.8, 406.1, 247.1, 492.9, OPEN_TOP, CEIL_H, mat.light);                                              // 開口上方輕隔間封板
   const o = [xp, ya, 0], g = pivotAt(...o), base = g.position.clone();
   const meshes = [panelMesh(xp - th / 2, ya, xp + th / 2, yb, 0.8, H, cab.oakGrain, g, o)];
   [ya + cm2px(14), yb - cm2px(14)].forEach(y => {                                                          // 吊輪 + 吊片
@@ -1301,13 +1301,13 @@ function setMahjong(on) {
   m.kind = 'room';
   g.userData.mover = m;
   m.open = true; m.t = 1; m.apply(1);                                                                      // 載入時開著
-  solids.push(Object.assign([236.8, 406.1, 247.1, 507], { gate: m }));
+  solids.push(Object.assign([236.8, 406.1, 247.1, 492.9], { gate: m }));
 }
 
-// 5. 架高床（下方收納）：x 37.9~361.3、y 515~699.5，高 40cm；北面（西段，玻璃隔間以西）3 個抽屜、東段 2 片上掀蓋；
-//    床墊 5 尺雙人 152 x 188，長邊沿東西向、床頭朝東（靠 8cm 輕隔間 / RC 柱那側），西段露出的平台做上掀蓋
+// 5. 架高床（下方收納）：x 37.9~369.5（東側貼平柱面）、y 500.9~699.5（貼隔間南面），高 40cm；北面（西段，玻璃隔間以西）3 個抽屜、東段 2 片上掀蓋；
+//    床墊雙人特大 6x7 尺 182 x 212，長邊沿東西向、床頭朝東（靠 8cm 輕隔間 / RC 柱那側），西段露出的平台做上掀蓋
 {
-  const PF = { x1: 37.9, x2: 361.3, y1: 515, y2: 699.5, h: 40 }, T = cm2px(1.8), G = cm2px(0.3), zT = PF.h - 2;
+  const PF = { x1: 37.9, x2: 369.5, y1: 500.9, y2: 699.5, h: 40 }, T = cm2px(1.8), G = cm2px(0.3), zT = PF.h - 2;
   solids.push(Object.assign([PF.x1, PF.y1, PF.x2, PF.y2], { seat: true, top: PF.h }));
   box(PF.x1, PF.y1, PF.x2, PF.y2, 0, 3, cab.greige);
   box(PF.x1, PF.y1, PF.x2, PF.y1 + T, 3, zT, cab.greige);                                     // 北面板
@@ -1315,10 +1315,10 @@ function setMahjong(on) {
   box(PF.x2 - T, PF.y1, PF.x2, PF.y2, 3, zT, cab.greige);
   const dw = (205 - PF.x1) / 3;                                                               // 抽屜段 x 37.9~205
   for (let i = 0; i < 3; i++) drawer(PF.x1 + i * dw + G, PF.y1 - T, PF.x1 + (i + 1) * dw - G, PF.y1, 3.3, zT - 0.5, cab.greige, { out: -1, depth: 55, travel: 40 });
-  // 床墊 + 枕頭：床頭靠東側（x 361.3）
-  const mx2 = PF.x2 - cm2px(1), mx1 = mx2 - cm2px(188), my1 = (PF.y1 + PF.y2) / 2 - cm2px(76), my2 = my1 + cm2px(152);
+  // 床墊 + 枕頭：床頭靠東側（x 369.5）
+  const mx2 = PF.x2 - cm2px(1), mx1 = mx2 - cm2px(212), my1 = (PF.y1 + PF.y2) / 2 - cm2px(91), my2 = my1 + cm2px(182);   // 雙人特大 6x7 尺（182 x 212）
   softBox(mx1, my1, mx2, my2, PF.h, PF.h + 25, 5, fabric(0xe9e6df));
-  [my1 + cm2px(38), my2 - cm2px(38)].forEach(yc => softBox(mx2 - cm2px(44), yc - cm2px(33), mx2 - cm2px(4), yc + cm2px(33), PF.h + 25, PF.h + 37, 6, fabric(0xf4f2ee)));
+  [my1 + cm2px(45), my2 - cm2px(45)].forEach(yc => softBox(mx2 - cm2px(44), yc - cm2px(33), mx2 - cm2px(4), yc + cm2px(33), PF.h + 25, PF.h + 37, 6, fabric(0xf4f2ee)));
   // 西段上掀蓋 2 片（床墊以西、抽屜深度以南：x 44~mx1、y 577~693）
   const lx1 = PF.x1 + cm2px(6), lx2 = mx1 - cm2px(4), ly1 = PF.y1 + cm2px(61), ly2 = PF.y2 - cm2px(6), lm = (ly1 + ly2) / 2;
   // 檯面（床墊範圍以外）：上掀蓋那塊挖空，掀開才看得到下面的收納格
@@ -1359,9 +1359,9 @@ function setMahjong(on) {
   });
 }
 
-// 6. 冰箱：RC 柱北側凹處（x 369.5~451.1），寬 70 x 深 68 x 高 180，背靠柱、正面朝北
+// 6. 冰箱：RC 柱北側凹處（x 377.7~451.1，隔間外移後寬約 72cm，凹處深約 97cm），寬 70 x 深 68 x 高 180，往外挪：門面離櫃面（y 492.9）退 2cm，背後留約 27cm 走管線 / 散熱
 {
-  const xc = (369.5 + 451.1) / 2, x1 = xc - cm2px(35), x2 = xc + cm2px(35), y2 = 592.4 - cm2px(2), y1 = y2 - cm2px(68);
+  const xc = (377.7 + 451.1) / 2, x1 = xc - cm2px(35), x2 = xc + cm2px(35), y1 = 492.9 + cm2px(2), y2 = y1 + cm2px(68);
   const shell = new THREE.MeshStandardMaterial({ color: 0xe9e9e6, roughness: 0.3 });
   box(x1, y1 + cm2px(2), x2, y2, 0, 180, shell, { collide: true });
   box(x1, y1, x2, y1 + cm2px(2.2), 112, 179.7, shell);                                        // 冷藏門
@@ -1371,10 +1371,10 @@ function setMahjong(on) {
   box(x2 - cm2px(6), y1 - cm2px(2.5), x2 - cm2px(4), y1, 70, 105, cab.steel);
 }
 
-// 6b. 冰箱上方吊櫃：白色，填滿凹處寬（x 369.5~451.1，約 80cm）、深 70（與冰箱門面齊平）、高 185~245；
+// 6b. 冰箱上方吊櫃：白色，填滿凹處寬（x 377.7~451.1，約 72cm）、加深到整個凹處（約 97cm，正面齊隔間牆 / 柱面 y 492.9）、高 185~245；
 //     下緣留 5cm 給冰箱散熱，上緣齊 B11 樑底（245）；245 以上正面封板到天花（消防主管藏在封板後），兩片對開門
 {
-  const x1 = 369.5, x2 = 451.1, y2 = 592.4, y1 = y2 - cm2px(70), T = cm2px(1.8), z0 = 185, z1 = 245, xm = (x1 + x2) / 2, G = cm2px(0.2);
+  const x1 = 377.7, x2 = 451.1, y2 = 592.4, y1 = 492.9, T = cm2px(1.8), z0 = 185, z1 = 245, xm = (x1 + x2) / 2, G = cm2px(0.2);
   carcass(x1, y1 + T, x2, y2, z0, z1, cab.white, { face: 'y-', inner: cab.white, shelves: [215] });
   hingeDoor(x1 + G, y1, xm - G, y1 + T, z0 + 0.3, z1 - 0.3, cab.white, { hinge: 'min', out: -1 });
   hingeDoor(xm + G, y1, x2 - G, y1 + T, z0 + 0.3, z1 - 0.3, cab.white, { hinge: 'max', out: -1 });
