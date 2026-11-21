@@ -7,7 +7,7 @@
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: #1b1d22; font-family: system-ui, "PingFang TC", sans-serif; }
   #ui {
-    position: fixed; top: calc(12px + env(safe-area-inset-top)); left: calc(12px + env(safe-area-inset-left)); z-index: 10;
+    position: fixed; top: calc(12px + env(safe-area-inset-top)); left: calc(12px + env(safe-area-inset-left)); z-index: 30;   /* 選單在最上層：不會被背包快捷欄 / 提示蓋住而誤點 */
     background: rgba(20, 22, 28, .85); color: #e8e8e8; padding: 12px 14px;
     border-radius: 8px; font-size: 13px; line-height: 1.7; max-width: 280px;
   }
@@ -44,7 +44,7 @@
     #furnTouch { right: calc(172px + env(safe-area-inset-right)); bottom: calc(26px + env(safe-area-inset-bottom)); }
   }
   @media (pointer: coarse) {                                                       /* 手機：背包快捷欄移到上方（下方是搖桿與按鍵），格子縮小 */
-    #bagBar { top: calc(10px + env(safe-area-inset-top)); bottom: auto; gap: 4px; }
+    #bagBar { top: calc(10px + env(safe-area-inset-top)); bottom: auto; left: auto; right: calc(10px + env(safe-area-inset-right)); transform: none; gap: 4px; }   /* 靠右上，避開左上選單 */
     #bagBar .slot { width: 36px; height: 40px; font-size: 9px; border-radius: 6px; }
     #furnHud { top: calc(58px + env(safe-area-inset-top)); bottom: auto; font-size: 13px; max-width: 90vw; }
   }
