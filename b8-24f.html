@@ -1760,7 +1760,7 @@ function setMode(m) {
   mode = m;
   if (mode === 'orbit') {
     walkSaved = { pos: camera.position.clone(), quat: camera.quaternion.clone() };
-    walk.unlock();
+    if (document.pointerLockElement) walk.unlock();                                // iPhone Safari 沒有 Pointer Lock API（exitPointerLock 不存在），直接呼叫會丟錯讓切換中斷
     orbit.enabled = true;
     camera.position.set(4, 13, 9);
     orbit.target.set(0, 0, 0);
