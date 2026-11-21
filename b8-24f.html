@@ -2121,7 +2121,7 @@ const ruler = (() => {
   document.getElementById('btnRulerClear').onclick = (e) => { e.stopPropagation(); group.clear(); a = null; if (on) setHud('量尺：對準第一點後點一下'); };
   addEventListener('keydown', (e) => {
     if (e.code === 'KeyR' && !e.repeat) set(!on);
-    if (e.code === 'KeyX' && on) { group.clear(); a = null; setHud('量尺：對準第一點後點一下'); }
+    if (e.code === 'KeyX' && on && !furn.holding) { group.clear(); a = null; setHud('量尺：對準第一點後點一下'); }
   });
   return { get on() { return on; }, click, update };
 })();
@@ -2347,7 +2347,7 @@ const furn = (() => {
   function update(ndc, dt) {
     if (!held) {                                                                      // 沒拿東西：家具優先高亮（提示 G 拿起），其次門 / 櫃門 / 抽屜
       t += dt; if (t < 0.1) return; t = 0;
-      const it = ruler.on || (mode === 'walk' && !IS_TOUCH && document.pointerLockElement !== renderer.domElement) ? null : pickItem(ndc);
+      const it = ruler.on || (IS_TOUCH && mode !== 'walk') || (mode === 'walk' && !IS_TOUCH && document.pointerLockElement !== renderer.domElement) ? null : pickItem(ndc);   // 手機俯瞰沒有「搬」鍵：不高亮家具，點擊照常開門
       if (it) { if (hoverM) hoverM = null; hover(it); return; }
       if (hoverIt) hover(null);
       ht = 1; hoverMover(ndc, 0);
