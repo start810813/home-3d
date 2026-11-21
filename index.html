@@ -2937,6 +2937,7 @@ function updateUI() {
 let walkSaved = { pos: startPos.clone(), quat: camera.quaternion.clone() };
 function setMode(m) {
   if (m === mode) return;
+  if (typeof furn !== 'undefined' && furn.holding) furn.set(false);              // 切換模式時手上的家具放回原位（避免卡在拿著的狀態）
   mode = m;
   if (mode === 'orbit') {
     walkSaved = { pos: camera.position.clone(), quat: camera.quaternion.clone() };
@@ -3621,7 +3622,11 @@ const furn = (() => {
     const it = pickItem(aimNdc());
     if (it) grab(it, false);
   }
-  const click = () => !!held;                                                         // 拿著東西時點擊不開門
+  function click(ndc) {                                                               // 拿著東西時點擊不開門；手機俯瞰模式沒有「搬」鍵 → 點畫面就放在點的位置
+    if (!held) return false;
+    if (IS_TOUCH && mode !== 'walk') { t = 1; update(ndc, 0); drop(); }
+    return true;
+  }
   // 平常模式：準星 / 滑鼠對到門、櫃門、抽屜、椅子也用同一個黃框高亮
   let hoverM = null, ht = 0;
   function hoverMover(ndc, dt) {
